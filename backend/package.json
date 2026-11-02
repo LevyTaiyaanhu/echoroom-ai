@@ -7,7 +7,9 @@
     "test": "node --test",
     "dev": "node --watch src/server.js",
     "start": "node src/server.js",
-    "db:check": "node scripts/check-db.js"
+    "db:check": "node scripts/check-db.js",
+    "db:migrate": "node scripts/migrate.js",
+    "db:verify": "node scripts/check-schema.js"
   },
   "keywords": [],
   "author": "",
