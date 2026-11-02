@@ -1,4 +1,3 @@
-# echoroom-ai
 # EchoRoom AI
 
 A Zimbabwe-focused music event discovery and promotion platform.
@@ -27,4 +26,55 @@ accurate and current details difficult to find.
 
 ## Development status
 
-Backend foundation in progress.
+# EchoRoom AI Backend
+
+Express REST API for the EchoRoom AI capstone project.
+
+## Requirements
+
+- Node.js matching `.nvmrc`
+- npm
+
+## Setup
+
+```bash
+nvm install
+nvm use
+npm ci
+cp .env.example .env
+```
+
+## Development
+
+```bash
+npm run dev
+```
+
+## Tests
+
+```bash
+npm test
+```
+
+## Start
+
+```bash
+npm start
+```
+
+## Current endpoints
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| GET | /api/health | Check whether the API is responding |
+
+## Configuration
+
+- NODE_ENV: application environment
+- PORT: HTTP server port
+- CLIENT_URL: permitted frontend origin
+
+## Current limitations
+
+Database access, authentication, event management, and AI integration
+are not implemented yet.
