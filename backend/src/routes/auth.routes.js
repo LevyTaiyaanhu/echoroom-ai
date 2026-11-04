@@ -16,7 +16,8 @@ function validateEmail(email) {
 
 router.post("/register", async (req, res, next) => {
   try {
-    const { full_name, email, password, role } = req.body;
+    const body = typeof req.body === "object" && req.body !== null ? req.body : {};
+    const { full_name, email, password, role } = body;
 
     if (!full_name || typeof full_name !== "string") {
       return res.status(400).json({ success: false, message: "full_name is required" });

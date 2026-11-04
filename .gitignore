@@ -12,3 +12,7 @@ build/
 backend/uploads/
 
 .DS_Store
+
+# Local database certificate configuration
+backend/certs/*
+!backend/certs/.gitkeep
