@@ -21,7 +21,7 @@ export const env = {
   clientUrl: process.env.CLIENT_URL ?? "http://localhost:5173",
   jwtSecret,
   jwtExpiresIn: process.env.JWT_EXPIRES_IN ?? "15m",
-  geminiApiKey: process.env.GEMINI_API_KEY ?? "Ab8RN6KuDhFXMj2IOm9OYkj7oLSia4M7Gzb41u0-Q1QDDFovQQ",
+  geminiApiKey: process.env.GEMINI_API_KEY,
   geminiModel: process.env.GEMINI_MODEL ?? "gemini-1.5-flash",
   maxFileSize: Number(process.env.MAX_FILE_SIZE ?? 5242880),
 };

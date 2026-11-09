@@ -161,4 +161,144 @@ router.get("/admin/events/:id/moderation-log", authenticate, requireRole("admin"
   }
 });
 
+// GET /api/admin/users — admin lists users
+router.get("/admin/users", authenticate, requireRole("admin"), async (req, res, next) => {
+  try {
+    const result = await pool.query(
+      `SELECT id, full_name, email, role, created_at
+       FROM echoroom.users
+       ORDER BY created_at DESC`
+    );
+
+    res.json({ success: true, users: result.rows });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// GET /api/admin/events — admin lists events (all statuses, supports filter)
+router.get("/admin/events", authenticate, requireRole("admin"), async (req, res, next) => {
+  try {
+    const { status, verified, hidden } = req.query;
+    const params = [];
+    let sql = `
+      SELECT e.id, e.promoter_id, e.title, e.description, e.artists, e.venue, e.city,
+             e.start_at, e.end_at, e.host, e.ticket_price_info, e.booking_info,
+             e.status, e.label, e.verified_at, e.verification_invalidated_at,
+             e.created_at, e.updated_at, e.is_hidden
+      FROM echoroom.events e`;
+    const conditions = [];
+    if (status) {
+      params.push(status);
+      conditions.push(`e.status = $${params.length}`);
+    }
+    if (verified !== undefined) {
+      params.push(verified === "true");
+      conditions.push(`e.label = $${params.length}`);
+    }
+    if (hidden !== undefined) {
+      params.push(hidden === "true");
+      conditions.push(`e.is_hidden = $${params.length}`);
+    }
+    if (conditions.length > 0) {
+      sql += ` WHERE ${conditions.join(" AND ")}`;
+    }
+    sql += ` ORDER BY e.start_at DESC`;
+
+    const result = await pool.query(sql, params);
+
+    res.json({ success: true, events: result.rows });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// POST /api/admin/events/:id/verify — admin verifies an event
+router.post("/admin/events/:id/verify", authenticate, requireRole("admin"), async (req, res, next) => {
+  try {
+    const eventResult = await pool.query(
+      `SELECT id, label FROM echoroom.events WHERE id = $1`,
+      [req.params.id]
+    );
+    if (eventResult.rows.length === 0) {
+      return res.status(404).json({ success: false, message: "Event not found" });
+    }
+
+    await pool.query(
+      `UPDATE echoroom.events
+       SET label = 'verified', verified_at = NOW(), verified_by = $1
+       WHERE id = $2`,
+      [req.user.id, req.params.id]
+    );
+
+    res.json({ success: true, message: "Event verified" });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// POST /api/admin/events/:id/unverify — admin removes verification
+router.post("/admin/events/:id/unverify", authenticate, requireRole("admin"), async (req, res, next) => {
+  try {
+    const eventResult = await pool.query(
+      `SELECT id, label FROM echoroom.events WHERE id = $1`,
+      [req.params.id]
+    );
+    if (eventResult.rows.length === 0) {
+      return res.status(404).json({ success: false, message: "Event not found" });
+    }
+
+    await pool.query(
+      `UPDATE echoroom.events
+       SET label = 'posted_by_promoter', verified_at = NULL, verified_by = NULL
+       WHERE id = $1`,
+      [req.params.id]
+    );
+
+    res.json({ success: true, message: "Verification removed" });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// POST /api/admin/reports/:id/dismiss — admin dismisses a report
+router.post("/admin/reports/:id/dismiss", authenticate, requireRole("admin"), async (req, res, next) => {
+  try {
+    const { note } = req.body;
+
+    if (note !== undefined && note !== null && (typeof note !== "string" || note.length > 2000)) {
+      return res.status(400).json({ success: false, message: "note must be at most 2000 characters" });
+    }
+
+    const reportResult = await pool.query(
+      `SELECT id, event_id, status FROM echoroom.event_reports WHERE id = $1 FOR UPDATE`,
+      [req.params.id]
+    );
+    const report = reportResult.rows[0];
+    if (!report) {
+      return res.status(404).json({ success: false, message: "Report not found" });
+    }
+    if (report.status !== "open") {
+      return res.status(400).json({ success: false, message: `Report already ${report.status}` });
+    }
+
+    await pool.query(
+      `INSERT INTO echoroom.moderation_decisions (event_id, decided_by, decision, public_note, private_note)
+       VALUES ($1, $2, 'dismiss', NULL, $3)`,
+      [report.event_id, req.user.id, note ?? null]
+    );
+
+    await pool.query(
+      `UPDATE echoroom.event_reports
+       SET status = 'dismissed', reviewed_at = NOW(), reviewed_by = $1
+       WHERE id = $2`,
+      [req.user.id, req.params.id]
+    );
+
+    res.json({ success: true, message: "Report dismissed" });
+  } catch (error) {
+    next(error);
+  }
+});
+
 export default router;

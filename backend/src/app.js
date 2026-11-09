@@ -9,6 +9,7 @@ import promotersRoutes from "./routes/promoters.routes.js";
 import eventsRoutes from "./routes/events.routes.js";
 import engagementsRoutes from "./routes/engagements.routes.js";
 import moderationRoutes from "./routes/moderation.routes.js";
+import aiRoutes from "./routes/ai.routes.js";
 import {
   notFound,
   errorHandler,
@@ -34,6 +35,7 @@ app.use("/api/promoters", promotersRoutes);
 app.use("/api/events", eventsRoutes);
 app.use("/api", engagementsRoutes);
 app.use("/api", moderationRoutes);
+app.use("/api/ai", aiRoutes);
 
 app.use(notFound);
 app.use(errorHandler);

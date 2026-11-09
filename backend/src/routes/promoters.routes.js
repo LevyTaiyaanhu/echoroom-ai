@@ -107,6 +107,48 @@ router.put("/me", authenticate, requireRole("promoter"), async (req, res, next) 
   }
 });
 
+
+// GET /api/promoters/me/events - the authenticated promoter own events
+router.get("/me/events", authenticate, requireRole("promoter"), async (req, res, next) => {
+  try {
+    const result = await pool.query(
+      `SELECT id, promoter_id, title, description, artists, venue, city,
+              start_at, end_at, host, ticket_price_info, booking_info,
+              status, label, verified_at, verification_invalidated_at,
+              created_at, updated_at, is_hidden
+       FROM echoroom.events
+       WHERE promoter_id = $1
+       ORDER BY start_at ASC`
+      [req.user.id]
+    );
+
+    res.json({ success: true, events: result.rows.map((row) => publicEvent(row, true)) });
+  } catch (error) {
+    next(error);
+  }
+});
+
+
+// GET /api/promoters/me/followers - promoter follower count
+router.get("/me/followers", authenticate, requireRole("promoter"), async (req, res, next) => {
+  try {
+    const result = await pool.query(
+      `SELECT COUNT(*) AS count
+       FROM echoroom.promoter_follows
+       WHERE promoter_id = $1`
+      [req.user.id]
+    );
+
+    res.json({
+      success: true,
+      followers: { count: Number(result.rows[0].count) },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+
 // Authenticated: follow a promoter
 router.post("/:id/follow", authenticate, async (req, res, next) => {
   try {

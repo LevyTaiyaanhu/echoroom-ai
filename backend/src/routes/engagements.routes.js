@@ -61,6 +61,33 @@ router.delete("/events/:id/like", authenticate, async (req, res, next) => {
   }
 });
 
+// GET /api/events/:id/liked — fan's liked events
+router.get("/events/:id/liked", authenticate, async (req, res, next) => {
+  try {
+    const eventResult = await pool.query(
+      `SELECT id FROM echoroom.events WHERE id = $1`,
+      [req.params.id]
+    );
+    if (eventResult.rows.length === 0) {
+      return res.status(404).json({ success: false, message: "Event not found" });
+    }
+
+    const result = await pool.query(
+      `SELECT user_id
+       FROM echoroom.event_likes
+       WHERE event_id = $1`,
+      [req.params.id]
+    );
+
+    res.json({
+      success: true,
+      liked: result.rows.map((row) => row.user_id),
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 // POST /api/events/:id/view — track an event-view estimate
 router.post("/events/:id/view", async (req, res, next) => {
   try {
@@ -95,6 +122,7 @@ router.post("/events/:id/view", async (req, res, next) => {
     next(error);
   }
 });
+
 // POST /api/events/:id/share — track a share-button action
 router.post("/events/:id/share", authenticate, async (req, res, next) => {
   try {
@@ -129,6 +157,44 @@ router.post("/events/:id/share", authenticate, async (req, res, next) => {
       success: true,
       message: "Share tracked",
       share_count: Number(countResult.rows[0].count),
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// GET /api/events/:id/engagement — engagement counts for an event (public)
+router.get("/events/:id/engagement", async (req, res, next) => {
+  try {
+    const eventResult = await pool.query(
+      `SELECT id FROM echoroom.events WHERE id = $1`,
+      [req.params.id]
+    );
+    if (eventResult.rows.length === 0) {
+      return res.status(404).json({ success: false, message: "Event not found" });
+    }
+
+    const likeResult = await pool.query(
+      `SELECT COUNT(*) AS count FROM echoroom.event_likes WHERE event_id = $1`,
+      [req.params.id]
+    );
+    const viewResult = await pool.query(
+      `SELECT view_count FROM echoroom.event_view_counts WHERE event_id = $1`,
+      [req.params.id]
+    );
+    const shareResult = await pool.query(
+      `SELECT COUNT(*) AS count FROM echoroom.event_shares WHERE event_id = $1`,
+      [req.params.id]
+    );
+
+    res.json({
+      success: true,
+      engagement: {
+        event_id: req.params.id,
+        like_count: Number(likeResult.rows[0].count),
+        view_count: viewResult.rows[0]?.view_count ?? 0,
+        share_count: Number(shareResult.rows[0].count),
+      },
     });
   } catch (error) {
     next(error);

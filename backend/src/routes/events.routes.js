@@ -223,8 +223,8 @@ router.get("/archive", async (req, res, next) => {
               e.status, e.label, e.verified_at, e.verification_invalidated_at,
               e.created_at, e.updated_at
        FROM echoroom.events e
-       WHERE e.status IN ('archived', 'cancelled')
-          OR e.start_at <= NOW()
+       WHERE (e.status = 'archived' OR e.status = 'cancelled' OR e.start_at <= NOW())
+          AND e.is_hidden = FALSE
        ORDER BY e.start_at DESC`
     );
 
@@ -400,8 +400,8 @@ router.get("/archive", async (req, res, next) => {
               e.status, e.label, e.verified_at, e.verification_invalidated_at,
               e.created_at, e.updated_at
        FROM echoroom.events e
-       WHERE e.status IN ('archived', 'cancelled')
-          OR e.start_at <= NOW()
+       WHERE (e.status = 'archived' OR e.status = 'cancelled' OR e.start_at <= NOW())
+          AND e.is_hidden = FALSE
        ORDER BY e.start_at DESC`
     );
 
