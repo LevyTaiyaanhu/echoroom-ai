@@ -1,21 +1,5 @@
-@import "tailwindcss";
+const appBootstrap = {
+  ready: true,
+};
 
-* {
-  box-sizing: border-box;
-}
-
-html {
-  scroll-behavior: smooth;
-}
-
-body {
-  margin: 0;
-  font-family: Inter, sans-serif;
-}
-
-button,
-input,
-textarea,
-select {
-  font: inherit;
-}
+export default appBootstrap;
