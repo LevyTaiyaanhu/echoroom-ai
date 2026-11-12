@@ -75,7 +75,7 @@ router.post("/register", async (req, res, next) => {
       });
     }
 
-    const userRole = role === "promoter" ? "promoter" : "fan";
+    const userRole = role === "promoter" || role === "artist" ? role : "fan";
 
     const passwordHash = await hashPassword(password);
 

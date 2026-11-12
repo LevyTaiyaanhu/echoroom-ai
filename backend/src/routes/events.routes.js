@@ -175,7 +175,7 @@ router.post("/", authenticate, requireRole("promoter"), async (req, res, next) =
 // GET /api/events — active, non-expired feed with search/filter
 router.get("/", async (req, res, next) => {
   try {
-    const { q, city, from, to } = req.query;
+    const { q, city, from, to, genre, ticket_price, artist, promoter } = req.query;
     const params = [];
     let sql = `
       SELECT e.id, e.promoter_id, e.title, e.description, e.artists, e.venue, e.city,
@@ -203,6 +203,34 @@ router.get("/", async (req, res, next) => {
     if (to) {
       params.push(to);
       sql += ` AND e.start_at <= $${params.length}`;
+    }
+    if (genre) {
+      params.push(`%${genre}%`);
+      sql += ` AND EXISTS (
+        SELECT 1 FROM echoroom.artist_profiles ap
+        WHERE ap.stage_name = ANY(e.artists)
+          AND ap.genre ILIKE $${params.length}
+      )`;
+    }
+    if (ticket_price) {
+      params.push(`%${ticket_price}%`);
+      sql += ` AND e.ticket_price_info ILIKE $${params.length}`;
+    }
+    if (artist) {
+      params.push(`%${artist}%`);
+      sql += ` AND EXISTS (
+        SELECT 1 FROM unnest(e.artists) AS a
+        WHERE a ILIKE $${params.length}
+      )`;
+    }
+    if (promoter) {
+      params.push(`%${promoter}%`);
+      sql += ` AND EXISTS (
+        SELECT 1 FROM echoroom.promoter_profiles pp
+        JOIN echoroom.users u ON u.id = pp.user_id
+        WHERE u.id = e.promoter_id
+          AND pp.display_name ILIKE $${params.length}
+      )`;
     }
 
     sql += ` ORDER BY e.start_at ASC`;

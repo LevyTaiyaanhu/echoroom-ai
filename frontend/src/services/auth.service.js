@@ -1,6 +1,6 @@
 import api from './api'
 
-const VALID_ROLES = new Set(['fan', 'promoter', 'admin'])
+const VALID_ROLES = new Set(['fan', 'artist', 'promoter', 'admin'])
 
 function validateUser(user) {
   if (

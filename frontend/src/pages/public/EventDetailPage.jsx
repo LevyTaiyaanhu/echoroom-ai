@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { format, isValid } from 'date-fns'
 import {
   ArrowLeft,
+  Bookmark,
   CalendarDays,
   CheckCircle2,
   Clock3,
@@ -13,6 +14,7 @@ import {
 } from 'lucide-react'
 import { Link, useParams } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
+import { useSavedEvents } from '../../context/SavedEventsContext'
 import {
   getEvent,
   getEventEngagement,
@@ -46,6 +48,13 @@ export default function EventDetailPage() {
 
 function EventDetailContent({ eventId }) {
   const { user } = useAuth()
+  const {
+    savedIds,
+    pendingIds,
+    isLoaded: savedStateLoaded,
+    loadError: savedLoadError,
+    toggleSaved,
+  } = useSavedEvents()
   const [retryCount, setRetryCount] = useState(0)
   const [event, setEvent] = useState(null)
   const [promoter, setPromoter] = useState(null)
@@ -57,7 +66,11 @@ function EventDetailContent({ eventId }) {
   const [actionError, setActionError] = useState('')
   const [likedByMe, setLikedByMe] = useState(false)
   const [likePending, setLikePending] = useState(false)
+  const [saveError, setSaveError] = useState('')
   const hasUserIdentity = Boolean(user?.id)
+  const canSave = user?.role === 'fan'
+  const isSaved = event ? savedIds.has(String(event.id)) : false
+  const savePending = event ? pendingIds.has(String(event.id)) : false
   const isLiked = hasUserIdentity && likedByMe
 
   const eventStatus = useMemo(() => {
@@ -150,6 +163,17 @@ function EventDetailContent({ eventId }) {
       setActionError(getApiErrorMessage(error, 'Could not update your like. Please try again.'))
     } finally {
       setLikePending(false)
+    }
+  }
+
+  const handleSave = async () => {
+    if (!event || !canSave || !savedStateLoaded || savePending) return
+
+    setSaveError('')
+    try {
+      await toggleSaved(event)
+    } catch (error) {
+      setSaveError(getApiErrorMessage(error, 'Could not update this saved event. Please try again.'))
     }
   }
 
@@ -390,6 +414,17 @@ function EventDetailContent({ eventId }) {
               </button>
               <button
                 type="button"
+                onClick={handleSave}
+                disabled={!canSave || !savedStateLoaded || savePending}
+                aria-pressed={isSaved}
+                title={!canSave ? 'Sign in as a fan to save events.' : savedLoadError || undefined}
+                className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl border border-[var(--border)] px-4 text-sm font-semibold text-[var(--text)] transition hover:border-[var(--primary)] disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <Bookmark size={17} fill={isSaved ? 'currentColor' : 'none'} aria-hidden="true" />
+                {savePending ? 'Saving…' : isSaved ? 'Saved' : 'Save'}
+              </button>
+              <button
+                type="button"
                 onClick={handleShare}
                 className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl bg-[var(--primary)] px-4 text-sm font-semibold text-white transition hover:bg-[var(--primary-strong)]"
               >
@@ -426,6 +461,14 @@ function EventDetailContent({ eventId }) {
             )}
             {actionError && (
               <p role="alert" className="mt-4 text-sm text-rose-600 dark:text-rose-300">{actionError}</p>
+            )}
+            {savedLoadError && canSave && (
+              <p role="alert" className="mt-4 text-sm text-rose-600 dark:text-rose-300">
+                Saved status unavailable: {savedLoadError}
+              </p>
+            )}
+            {saveError && (
+              <p role="alert" className="mt-4 text-sm text-rose-600 dark:text-rose-300">{saveError}</p>
             )}
           </section>
         </aside>

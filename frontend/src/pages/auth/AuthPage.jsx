@@ -6,6 +6,7 @@ import { getApiErrorMessage } from '../../utils/apiError'
 
 function getRoleHome(role) {
   if (role === 'promoter') return '/promoter'
+  if (role === 'artist') return '/artist'
   if (role === 'admin') return '/admin'
   return '/dashboard'
 }
@@ -118,6 +119,7 @@ export default function AuthPage({ mode }) {
                   className="w-full rounded-2xl border border-[var(--border)] bg-[var(--surface-strong)] px-4 py-3 text-[var(--text)] outline-none transition focus:border-[var(--primary)]"
                 >
                   <option value="fan">Fan</option>
+                  <option value="artist">Artist</option>
                   <option value="promoter">Promoter</option>
                 </select>
                 <p className="mt-2 text-xs text-[var(--text-soft)]">

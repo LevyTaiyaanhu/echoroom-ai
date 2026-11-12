@@ -1,6 +1,7 @@
 import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { LogOut, Music2, Sparkles, UserRound } from 'lucide-react'
 import ThemeToggle from '../components/common/ThemeToggle'
+import NotificationBell from '../components/common/NotificationBell'
 import { useAuth } from '../context/AuthContext'
 
 const navigation = [
@@ -13,9 +14,14 @@ export default function MainLayout() {
   const accountLinks = user?.role === 'fan'
     ? [
         { name: 'Dashboard', to: '/dashboard' },
+        { name: 'Saved events', to: '/saved-events' },
+        { name: 'Following', to: '/following' },
+        { name: 'Notifications', to: '/notifications' },
         { name: 'Profile', to: '/settings/profile' },
       ]
-    : user?.role === 'promoter'
+    : user?.role === 'artist'
+      ? [{ name: 'Artist workspace', to: '/artist' }]
+      : user?.role === 'promoter'
       ? [
           { name: 'Promoter workspace', to: '/promoter' },
           { name: 'Promoter profile', to: '/promoter/profile' },
@@ -60,6 +66,9 @@ export default function MainLayout() {
             <Link to="/events" className="text-sm font-medium text-[var(--text-soft)] transition hover:text-[var(--text)]">
               Events
             </Link>
+            <Link to="/artists" className="text-sm font-medium text-[var(--text-soft)] transition hover:text-[var(--text)]">
+              Artists
+            </Link>
             <a
               href="/#promoters"
               className="text-sm font-medium text-[var(--text-soft)] transition hover:text-[var(--text)]"
@@ -82,6 +91,7 @@ export default function MainLayout() {
           </nav>
 
           <div className="flex items-center gap-3">
+            <NotificationBell />
             <ThemeToggle className="hidden sm:inline-flex" />
             {isAuthenticated ? (
               <>
@@ -125,6 +135,9 @@ export default function MainLayout() {
           </Link>
           <Link to="/events" className="shrink-0 hover:text-[var(--primary)]">
             Events
+          </Link>
+          <Link to="/artists" className="shrink-0 hover:text-[var(--primary)]">
+            Artists
           </Link>
           <a href="/#promoters" className="shrink-0 hover:text-[var(--primary)]">
             Promoters
