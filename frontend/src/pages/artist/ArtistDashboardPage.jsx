@@ -35,6 +35,8 @@ export default function ArtistDashboardPage() {
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const [retry, setRetry] = useState(0)
+  const [selectedFile, setSelectedFile] = useState(null)
+  const [previewUrl, setPreviewUrl] = useState(null)
   const requestKey = `${user.id}:${retry}`
   const loading = loadedRequest !== requestKey
 
@@ -119,7 +121,7 @@ export default function ArtistDashboardPage() {
     }
   }
 
-  const handlePicture = async (event) => {
+  const handleFileSelect = (event) => {
     const file = event.target.files?.[0]
     event.target.value = ''
     if (!file) return
@@ -136,18 +138,41 @@ export default function ArtistDashboardPage() {
       return
     }
 
+    setSelectedFile(file)
+    setPreviewUrl(URL.createObjectURL(file))
+    setError('')
+    setNotice('')
+  }
+
+  const handleUpload = async () => {
+    if (!selectedFile || uploading) return
     setUploading(true)
     setError('')
     setNotice('')
     try {
-      const pictureUrl = await uploadArtistPicture(file)
+      const pictureUrl = await uploadArtistPicture(selectedFile)
       setProfile((current) => ({ ...current, profile_picture_url: pictureUrl }))
       setNotice('Profile picture updated.')
     } catch (requestError) {
       setError(getApiErrorMessage(requestError, 'The profile picture could not be uploaded.'))
     } finally {
       setUploading(false)
+      setSelectedFile(null)
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl)
+        setPreviewUrl(null)
+      }
     }
+  }
+
+  const handleCancelPreview = () => {
+    setSelectedFile(null)
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl)
+      setPreviewUrl(null)
+    }
+    setError('')
+    setNotice('')
   }
 
   const handleRemovePicture = async () => {
@@ -202,7 +227,15 @@ export default function ArtistDashboardPage() {
 
       {profile && (
         <section className="flex flex-wrap items-center gap-5 rounded-3xl border border-[var(--border)] bg-[var(--surface)] p-5">
-          {profile.profile_picture_url ? (
+          {previewUrl ? (
+            <div className="relative">
+              <img src={previewUrl} alt="Selected profile picture" className="h-20 w-20 rounded-2xl object-cover border border-[var(--border)]" />
+              <button type="button" onClick={handleCancelPreview} disabled={uploading} className="absolute -top-1 -right-1 rounded-full border border-[var(--border)] bg-[var(--surface)] p-1 text-[var(--text)] hover:bg-rose-500/10 disabled:opacity-50" aria-label="Cancel image selection">
+                <span className="sr-only">Cancel image selection</span>
+                <span aria-hidden="true">×</span>
+              </button>
+            </div>
+          ) : profile.profile_picture_url ? (
             <img src={profile.profile_picture_url} alt={`${profile.stage_name} profile`} className="h-20 w-20 rounded-2xl object-cover" />
           ) : (
             <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-violet-500/10 text-[var(--primary)]">
@@ -213,12 +246,23 @@ export default function ArtistDashboardPage() {
             <p className="font-semibold text-[var(--text)]">Profile picture</p>
             <p className="mt-1 text-sm text-[var(--text-soft)]">JPEG, PNG, WEBP, or GIF; up to 5 MB.</p>
           </div>
-          <label className="inline-flex min-h-10 cursor-pointer items-center gap-2 rounded-full border border-[var(--border)] px-4 text-sm font-semibold text-[var(--text)] hover:border-[var(--primary)]">
-            <Camera size={16} aria-hidden="true" />
-            {uploading ? 'Uploading…' : 'Upload image'}
-            <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" className="sr-only" disabled={uploading} onChange={handlePicture} />
-          </label>
-          {profile.profile_picture_url && (
+          {previewUrl ? (
+            <>
+              <button type="button" onClick={handleUpload} disabled={uploading || !selectedFile} className="min-h-10 rounded-full border border-[var(--border)] bg-[var(--primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--primary-strong)] disabled:cursor-wait disabled:opacity-60">
+                {uploading ? 'Uploading…' : 'Upload'}
+              </button>
+              <button type="button" onClick={handleCancelPreview} disabled={uploading} className="min-h-10 rounded-full border border-[var(--border)] bg-[var(--surface-strong)] px-4 text-sm font-semibold text-[var(--text)] hover:border-[var(--primary)] disabled:cursor-wait disabled:opacity-60">
+                Cancel
+              </button>
+            </>
+          ) : (
+            <label className="inline-flex min-h-10 cursor-pointer items-center gap-2 rounded-full border border-[var(--border)] px-4 text-sm font-semibold text-[var(--text)] hover:border-[var(--primary)] disabled:cursor-not-allowed disabled:opacity-60">
+              <Camera size={16} aria-hidden="true" />
+              {uploading ? 'Uploading…' : 'Upload image'}
+              <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" className="sr-only" disabled={uploading} onChange={handleFileSelect} />
+            </label>
+          )}
+          {profile.profile_picture_url && !previewUrl && (
             <button type="button" onClick={handleRemovePicture} disabled={uploading} className="inline-flex min-h-10 items-center gap-2 rounded-full border border-rose-500/30 px-4 text-sm font-semibold text-rose-600 hover:bg-rose-500/5 disabled:opacity-50 dark:text-rose-300">
               <Trash2 size={15} aria-hidden="true" />
               Remove
