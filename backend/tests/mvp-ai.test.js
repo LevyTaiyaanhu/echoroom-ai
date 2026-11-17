@@ -54,7 +54,6 @@ test("POST /api/ai/extract-flyer requires promoter role", async (t) => {
   try {
     await register(email, "fan", "MVP AI Fan");
     const token = await login(email);
-
     const res = await request(app)
       .post("/api/ai/extract-flyer")
       .set("Authorization", `Bearer ${token}`);
@@ -70,7 +69,6 @@ test("POST /api/ai/extract-flyer returns 400 when no image uploaded", async (t) 
   try {
     await register(email, "promoter", "MVP AI Promo No File");
     const token = await login(email);
-
     const res = await request(app)
       .post("/api/ai/extract-flyer")
       .set("Authorization", `Bearer ${token}`);
@@ -86,7 +84,6 @@ test("POST /api/ai/detect-duplicates requires title", async (t) => {
   try {
     await register(email, "fan", "MVP Dup Fan");
     const token = await login(email);
-
     const res = await request(app)
       .post("/api/ai/detect-duplicates")
       .set("Authorization", `Bearer ${token}`)
@@ -103,7 +100,6 @@ test("POST /api/ai/detect-duplicates returns empty when no matches", async (t) =
   try {
     await register(email, "fan", "MVP Dup Fan 2");
     const token = await login(email);
-
     const res = await request(app)
       .post("/api/ai/detect-duplicates")
       .set("Authorization", `Bearer ${token}`)
@@ -119,13 +115,12 @@ test("POST /api/ai/detect-duplicates returns empty when no matches", async (t) =
 test("POST /api/ai/generate-description requires promoter role", async (t) => {
   const email = `mvagd${suffix}@example.com`;
   try {
-    await register(email, "fan", "MVP Gen Desc Fan");
+    await register(email, "fan", "MVP AI Desc Fan");
     const token = await login(email);
-
     const res = await request(app)
       .post("/api/ai/generate-description")
       .set("Authorization", `Bearer ${token}`)
-      .send({ title: "Test Event" });
+      .send({});
     assert.equal(res.status, 403);
     assert.equal(res.body.success, false);
   } finally {
@@ -136,9 +131,8 @@ test("POST /api/ai/generate-description requires promoter role", async (t) => {
 test("POST /api/ai/generate-description requires title", async (t) => {
   const email = `mvagd2${suffix}@example.com`;
   try {
-    await register(email, "promoter", "MVP Gen Desc Promo");
+    await register(email, "promoter", "MVP AI Desc Promo");
     const token = await login(email);
-
     const res = await request(app)
       .post("/api/ai/generate-description")
       .set("Authorization", `Bearer ${token}`)
@@ -155,7 +149,6 @@ test("POST /api/ai/extract-flyer validates image file type", async (t) => {
   try {
     await register(email, "promoter", "MVP AI File Promo");
     const token = await login(email);
-
     const res = await request(app)
       .post("/api/ai/extract-flyer")
       .set("Authorization", `Bearer ${token}`)
@@ -165,4 +158,276 @@ test("POST /api/ai/extract-flyer validates image file type", async (t) => {
   } finally {
     await cleanup(email);
   }
+});
+
+// --- Unit tests for Gemini AI service ---
+
+import { resetGenAI, extractEventFromImage, generateEventDescription, getGenAI } from "../src/lib/ai.js";
+import { env } from "../src/config/env.js";
+
+test("extractEventFromImage throws when GEMINI_API_KEY is missing", async (t) => {
+  const originalKey = env.geminiApiKey;
+  env.geminiApiKey = "";
+  resetGenAI();
+  try {
+    await assert.rejects(
+      () => extractEventFromImage(Buffer.from("fake-image"), "image/jpeg"),
+      /GEMINI_API_KEY is not configured/,
+    );
+  } finally {
+    env.geminiApiKey = originalKey;
+    resetGenAI();
+  }
+});
+
+test("generateEventDescription throws when GEMINI_API_KEY is missing", async (t) => {
+  const originalKey = env.geminiApiKey;
+  env.geminiApiKey = "";
+  resetGenAI();
+  try {
+    await assert.rejects(
+      () => generateEventDescription({ title: "Test" }),
+      /GEMINI_API_KEY is not configured/,
+    );
+  } finally {
+    env.geminiApiKey = originalKey;
+    resetGenAI();
+  }
+});
+
+test("extractEventFromImage propagates Gemini API errors", async (t) => {
+  const originalKey = env.geminiApiKey;
+  env.geminiApiKey = "test-api-key-12345";
+  resetGenAI();
+  try {
+    const genAIInstance = getGenAI();
+    const originalGenerateContent = genAIInstance.models.generateContent;
+    genAIInstance.models.generateContent = async () => {
+      throw new Error("Gemini API rate limit exceeded");
+    };
+    try {
+      await assert.rejects(
+        () => extractEventFromImage(Buffer.from("fake-image"), "image/jpeg"),
+        /Gemini API rate limit exceeded/,
+      );
+    } finally {
+      genAIInstance.models.generateContent = originalGenerateContent;
+    }
+  } finally {
+    env.geminiApiKey = originalKey;
+    resetGenAI();
+  }
+});
+
+test("generateEventDescription propagates Gemini API errors", async (t) => {
+  const originalKey = env.geminiApiKey;
+  env.geminiApiKey = "test-api-key-12345";
+  resetGenAI();
+  try {
+    const genAIInstance = getGenAI();
+    const originalGenerateContent = genAIInstance.models.generateContent;
+    genAIInstance.models.generateContent = async () => {
+      throw new Error("Gemini API service unavailable");
+    };
+    try {
+      await assert.rejects(
+        () => generateEventDescription({ title: "Test" }),
+        /Gemini API service unavailable/,
+      );
+    } finally {
+      genAIInstance.models.generateContent = originalGenerateContent;
+    }
+  } finally {
+    env.geminiApiKey = originalKey;
+    resetGenAI();
+  }
+});
+
+// --- Unit tests for error status codes ---
+
+test("getGenAI throws 500 when GEMINI_API_KEY is missing", async (t) => {
+  const originalKey = env.geminiApiKey;
+  env.geminiApiKey = "";
+  resetGenAI();
+  try {
+    let err;
+    try { getGenAI(); } catch (e) { err = e; }
+    assert.ok(err, "Expected getGenAI to throw");
+    assert.match(err.message, /GEMINI_API_KEY is not configured/);
+    assert.equal(err.status, 500);
+  } finally {
+    env.geminiApiKey = originalKey;
+    resetGenAI();
+  }
+});
+
+test("extractEventFromImage propagates rate limit error with status 429", async (t) => {
+  const originalKey = env.geminiApiKey;
+  env.geminiApiKey = "test-api-key-12345";
+  resetGenAI();
+  try {
+    const genAIInstance = getGenAI();
+    const originalGenerateContent = genAIInstance.models.generateContent;
+    genAIInstance.models.generateContent = async () => {
+      throw new Error("Gemini API rate limit exceeded");
+    };
+    try {
+      let err;
+      try { await extractEventFromImage(Buffer.from("fake-image"), "image/jpeg"); } catch (e) { err = e; }
+      assert.ok(err, "Expected extractEventFromImage to throw");
+      assert.match(err.message, /Gemini API rate limit exceeded/);
+      assert.equal(err.status, 429);
+    } finally {
+      genAIInstance.models.generateContent = originalGenerateContent;
+    }
+  } finally {
+    env.geminiApiKey = originalKey;
+    resetGenAI();
+  }
+});
+
+test("extractEventFromImage propagates authentication error with status 401", async (t) => {
+  const originalKey = env.geminiApiKey;
+  env.geminiApiKey = "test-api-key-12345";
+  resetGenAI();
+  try {
+    const genAIInstance = getGenAI();
+    const originalGenerateContent = genAIInstance.models.generateContent;
+    genAIInstance.models.generateContent = async () => {
+      throw new Error("Gemini API authentication failed");
+    };
+    try {
+      let err;
+      try { await extractEventFromImage(Buffer.from("fake-image"), "image/jpeg"); } catch (e) { err = e; }
+      assert.ok(err, "Expected extractEventFromImage to throw");
+      assert.match(err.message, /Gemini API authentication failed/);
+      assert.equal(err.status, 401);
+    } finally {
+      genAIInstance.models.generateContent = originalGenerateContent;
+    }
+  } finally {
+    env.geminiApiKey = originalKey;
+    resetGenAI();
+  }
+});
+
+test("extractEventFromImage propagates invalid model error with status 400", async (t) => {
+  const originalKey = env.geminiApiKey;
+  env.geminiApiKey = "test-api-key-12345";
+  resetGenAI();
+  try {
+    const genAIInstance = getGenAI();
+    const originalGenerateContent = genAIInstance.models.generateContent;
+    genAIInstance.models.generateContent = async () => {
+      throw new Error("Gemini API model is invalid or not found");
+    };
+    try {
+      let err;
+      try { await extractEventFromImage(Buffer.from("fake-image"), "image/jpeg"); } catch (e) { err = e; }
+      assert.ok(err, "Expected extractEventFromImage to throw");
+      assert.match(err.message, /Gemini API model is invalid/);
+      assert.equal(err.status, 400);
+    } finally {
+      genAIInstance.models.generateContent = originalGenerateContent;
+    }
+  } finally {
+    env.geminiApiKey = originalKey;
+    resetGenAI();
+  }
+});
+
+test("extractEventFromImage propagates network error with status 503", async (t) => {
+  const originalKey = env.geminiApiKey;
+  env.geminiApiKey = "test-api-key-12345";
+  resetGenAI();
+  try {
+    const genAIInstance = getGenAI();
+    const originalGenerateContent = genAIInstance.models.generateContent;
+    genAIInstance.models.generateContent = async () => {
+      throw new Error("Network error: ETIMEDOUT connecting to Gemini API");
+    };
+    try {
+      let err;
+      try { await extractEventFromImage(Buffer.from("fake-image"), "image/jpeg"); } catch (e) { err = e; }
+      assert.ok(err, "Expected extractEventFromImage to throw");
+      assert.match(err.message, /Gemini API connection failed/);
+      assert.equal(err.status, 503);
+    } finally {
+      genAIInstance.models.generateContent = originalGenerateContent;
+    }
+  } finally {
+    env.geminiApiKey = originalKey;
+    resetGenAI();
+  }
+});
+
+test("extractEventFromImage throws 400 on non-JSON response", async (t) => {
+  const originalKey = env.geminiApiKey;
+  env.geminiApiKey = "test-api-key-12345";
+  resetGenAI();
+  try {
+    const genAIInstance = getGenAI();
+    const originalGenerateContent = genAIInstance.models.generateContent;
+    genAIInstance.models.generateContent = async () => ({ text: "not valid json at all" });
+    try {
+      let err;
+      try { await extractEventFromImage(Buffer.from("fake-image"), "image/jpeg"); } catch (e) { err = e; }
+      assert.ok(err, "Expected extractEventFromImage to throw");
+      assert.match(err.message, /Gemini returned non-JSON response/);
+      assert.equal(err.status, 400);
+    } finally {
+      genAIInstance.models.generateContent = originalGenerateContent;
+    }
+  } finally {
+    env.geminiApiKey = originalKey;
+    resetGenAI();
+  }
+});
+
+test("generateEventDescription throws 400 on empty response", async (t) => {
+  const originalKey = env.geminiApiKey;
+  env.geminiApiKey = "test-api-key-12345";
+  resetGenAI();
+  try {
+    const genAIInstance = getGenAI();
+    const originalGenerateContent = genAIInstance.models.generateContent;
+    genAIInstance.models.generateContent = async () => ({ text: "" });
+    try {
+      let err;
+      try { await generateEventDescription({ title: "Test" }); } catch (e) { err = e; }
+      assert.ok(err, "Expected generateEventDescription to throw");
+      assert.match(err.message, /Gemini returned an empty event description/);
+      assert.equal(err.status, 400);
+    } finally {
+      genAIInstance.models.generateContent = originalGenerateContent;
+    }
+  } finally {
+    env.geminiApiKey = originalKey;
+    resetGenAI();
+  }
+});
+
+test("env uses valid GEMINI_MODEL for image input", async (t) => {
+  const VALID_GEMINI_MODELS = [
+    "gemini-1.5-flash",
+    "gemini-1.5-pro",
+    "gemini-2.0-flash",
+    "gemini-2.0-flash-lite",
+    "gemini-2.5-flash",
+    "gemini-2.5-pro",
+  ];
+  assert.ok(VALID_GEMINI_MODELS.includes(env.geminiModel), `Configured model "${env.geminiModel}" is not in the valid models list`);
+  assert.match(env.geminiModel, /^gemini-\d\.\d/);
+});
+
+test("env rejects invalid GEMINI_MODEL", async (t) => {
+  const VALID_GEMINI_MODELS = [
+    "gemini-1.5-flash",
+    "gemini-1.5-pro",
+    "gemini-2.0-flash",
+    "gemini-2.0-flash-lite",
+    "gemini-2.5-flash",
+    "gemini-2.5-pro",
+  ];
+  assert.ok(!VALID_GEMINI_MODELS.includes("gemini-999-nonexistent"), "Invalid model should not be in the valid models list");
 });

@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { pool } from "../config/db.js";
 import { authenticate, requireRole } from "../middleware/auth.middleware.js";
+import { handleMulterError } from "../middleware/upload.middleware.js";
 import multer from "multer";
 import { env } from "../config/env.js";
 
@@ -240,6 +241,7 @@ router.post(
   authenticate,
   requireRole("artist"),
   uploadArtistPicture,
+  handleMulterError,
   async (req, res, next) => {
     try {
       if (!req.file) {

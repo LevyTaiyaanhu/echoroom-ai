@@ -97,7 +97,7 @@ function validateEventBody(body) {
   return { errors, artists, startAt, endAt };
 }
 
-function publicEvent(row, isOwner) {
+export function publicEvent(row, isOwner) {
   return {
     id: row.id,
     promoter_id: row.promoter_id,

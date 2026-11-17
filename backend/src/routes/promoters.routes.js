@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { pool } from "../config/db.js";
 import { authenticate, requireRole } from "../middleware/auth.middleware.js";
+import { publicEvent } from "./events.routes.js";
 
 const router = Router();
 
@@ -118,7 +119,7 @@ router.get("/me/events", authenticate, requireRole("promoter"), async (req, res,
               created_at, updated_at, is_hidden
        FROM echoroom.events
        WHERE promoter_id = $1
-       ORDER BY start_at ASC`
+       ORDER BY start_at ASC`,
       [req.user.id]
     );
 
@@ -133,9 +134,10 @@ router.get("/me/events", authenticate, requireRole("promoter"), async (req, res,
 router.get("/me/followers", authenticate, requireRole("promoter"), async (req, res, next) => {
   try {
     const result = await pool.query(
-      `SELECT COUNT(*) AS count
-       FROM echoroom.promoter_follows
-       WHERE promoter_id = $1`
+      `SELECT COUNT(pf.id) AS count
+       FROM echoroom.promoter_profiles pp
+       LEFT JOIN echoroom.promoter_follows pf ON pf.promoter_id = pp.id
+       WHERE pp.user_id = $1`,
       [req.user.id]
     );
 

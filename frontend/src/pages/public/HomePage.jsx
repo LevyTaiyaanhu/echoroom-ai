@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
 import {
   ArrowDown,
@@ -6,6 +6,8 @@ import {
   CalendarDays,
   Check,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   Disc3,
   MapPin,
   Music2,
@@ -47,6 +49,9 @@ export default function HomePage() {
   const [promoters, setPromoters] = useState([])
   const [promotersLoading, setPromotersLoading] = useState(true)
   const [promotersError, setPromotersError] = useState('')
+  const [activeBenefit, setActiveBenefit] = useState(0)
+  const benefitsCarouselRef = useRef(null)
+  const benefitsScrollFrameRef = useRef(null)
 
   useEffect(() => {
     const controller = new AbortController()
@@ -64,6 +69,44 @@ export default function HomePage() {
 
     return () => controller.abort()
   }, [])
+
+  useEffect(() => () => {
+    if (benefitsScrollFrameRef.current !== null) {
+      cancelAnimationFrame(benefitsScrollFrameRef.current)
+    }
+  }, [])
+
+  const scrollToBenefit = (index) => {
+    const nextIndex = Math.max(0, Math.min(index, benefits.length - 1))
+    const carousel = benefitsCarouselRef.current
+
+    if (!carousel) return
+
+    setActiveBenefit(nextIndex)
+    carousel.scrollTo({
+      left: nextIndex * carousel.clientWidth,
+      behavior: 'smooth',
+    })
+  }
+
+  const handleBenefitsScroll = () => {
+    if (benefitsScrollFrameRef.current !== null) return
+
+    benefitsScrollFrameRef.current = requestAnimationFrame(() => {
+      benefitsScrollFrameRef.current = null
+      const carousel = benefitsCarouselRef.current
+      if (!carousel || carousel.clientWidth === 0) return
+
+      const nextIndex = Math.max(
+        0,
+        Math.min(
+          Math.round(carousel.scrollLeft / carousel.clientWidth),
+          benefits.length - 1,
+        ),
+      )
+      setActiveBenefit((current) => current === nextIndex ? current : nextIndex)
+    })
+  }
 
   useEffect(() => {
     const controller = new AbortController()
@@ -227,7 +270,14 @@ export default function HomePage() {
           </h2>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-3">
+        <div
+          ref={benefitsCarouselRef}
+          className="feature-cards-carousel grid gap-4 md:grid-cols-3"
+          onScroll={handleBenefitsScroll}
+          role="region"
+          aria-roledescription="carousel"
+          aria-label="EchoRoom features"
+        >
           {benefits.map(({ icon: Icon, title, description }, index) => (
             <motion.article
               key={title}
@@ -235,7 +285,10 @@ export default function HomePage() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: '-40px' }}
               transition={{ duration: 0.35, delay: index * 0.08 }}
-              className="rounded-3xl border border-[var(--border)] bg-[var(--surface)] p-6 transition hover:-translate-y-1 hover:shadow-[var(--shadow)]"
+              className="feature-carousel-card rounded-3xl border border-[var(--border)] bg-[var(--surface)] p-6 transition hover:-translate-y-1 hover:shadow-[var(--shadow)]"
+              role="group"
+              aria-roledescription="slide"
+              aria-label={`Feature ${index + 1} of ${benefits.length}: ${title}`}
             >
               <div className="mb-5 flex h-11 w-11 items-center justify-center rounded-2xl bg-violet-500/10 text-[var(--primary)]">
                 <Icon size={20} aria-hidden="true" />
@@ -244,6 +297,42 @@ export default function HomePage() {
               <p className="mt-2 text-sm leading-6 text-[var(--text-soft)]">{description}</p>
             </motion.article>
           ))}
+        </div>
+        <div className="feature-carousel-controls hidden items-center justify-between gap-4">
+          <button
+            type="button"
+            aria-label="Previous feature"
+            onClick={() => scrollToBenefit(activeBenefit - 1)}
+            disabled={activeBenefit === 0}
+            className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--surface)] text-[#7C3AED] transition hover:border-[#7C3AED] hover:bg-violet-500/10 active:scale-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#7C3AED] disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            <ChevronLeft size={20} aria-hidden="true" />
+          </button>
+          <div className="flex items-center justify-center gap-3" aria-label="Choose a feature">
+            {benefits.map(({ title }, index) => (
+              <button
+                key={title}
+                type="button"
+                aria-label={`Go to feature ${index + 1}`}
+                aria-current={activeBenefit === index ? 'true' : undefined}
+                onClick={() => scrollToBenefit(index)}
+                className={`h-3 rounded-full transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#7C3AED] ${
+                  activeBenefit === index
+                    ? 'w-7 bg-[#7C3AED]'
+                    : 'w-3 bg-gray-300 hover:bg-gray-400 dark:bg-gray-600 dark:hover:bg-gray-500'
+                }`}
+              />
+            ))}
+          </div>
+          <button
+            type="button"
+            aria-label="Next feature"
+            onClick={() => scrollToBenefit(activeBenefit + 1)}
+            disabled={activeBenefit === benefits.length - 1}
+            className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--surface)] text-[#7C3AED] transition hover:border-[#7C3AED] hover:bg-violet-500/10 active:scale-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#7C3AED] disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            <ChevronRight size={20} aria-hidden="true" />
+          </button>
         </div>
       </section>
 

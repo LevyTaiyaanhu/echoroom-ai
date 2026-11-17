@@ -1,16 +1,34 @@
-import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom'
-import { LogOut, Music2, Sparkles, UserRound } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
+import {
+  Building2,
+  CalendarDays,
+  Compass,
+  House,
+  LogOut,
+  Music2,
+  Sparkles,
+  UserRound,
+  UsersRound,
+} from 'lucide-react'
 import ThemeToggle from '../components/common/ThemeToggle'
 import NotificationBell from '../components/common/NotificationBell'
 import { useAuth } from '../context/AuthContext'
 
-const navigation = [
-  { name: 'Discover', to: '/' },
+const publicNavigation = [
+  { name: 'Discover', to: '/', icon: Compass, end: true },
+  { name: 'Events', to: '/events', icon: CalendarDays },
+  { name: 'Artists', to: '/artists', icon: UsersRound },
+  { name: 'Promoters', to: '/#promoters', icon: Building2, hash: '#promoters' },
 ]
 
 export default function MainLayout() {
   const { user, isAuthenticated, logout } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const menuRef = useRef(null)
+  const menuButtonRef = useRef(null)
   const accountLinks = user?.role === 'fan'
     ? [
         { name: 'Dashboard', to: '/dashboard' },
@@ -30,69 +48,179 @@ export default function MainLayout() {
         ? [{ name: 'Admin workspace', to: '/admin' }]
         : []
 
+  useEffect(() => {
+    if (!mobileMenuOpen) return undefined
+
+    const handlePointerDown = (event) => {
+      if (!menuRef.current?.contains(event.target)) setMobileMenuOpen(false)
+    }
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        setMobileMenuOpen(false)
+        menuButtonRef.current?.focus()
+      }
+    }
+
+    document.addEventListener('pointerdown', handlePointerDown)
+    document.addEventListener('keydown', handleKeyDown)
+
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [mobileMenuOpen])
+
   const handleLogout = () => {
     logout()
     navigate('/', { replace: true })
   }
 
+  const activeLinkClass = ({ isActive }) =>
+    `text-sm font-medium transition ${
+      isActive ? 'text-[var(--primary)]' : 'text-[var(--text-soft)] hover:text-[var(--text)]'
+    }`
+
+  const mobileLinkClass = (isActive) =>
+    `flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm font-medium transition ${
+      isActive
+        ? 'bg-violet-500/10 text-[var(--primary)]'
+        : 'text-[var(--text)] hover:bg-[var(--surface-strong)]'
+    }`
+
   return (
     <div className="min-h-screen bg-[var(--bg)] text-[var(--text)]">
-      <header className="sticky top-0 z-20 border-b border-[var(--border)] bg-[var(--bg-elevated)]/80 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
-          <Link to="/" className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[var(--primary)] text-white shadow-lg shadow-violet-500/20">
+      <header className="fixed left-0 right-0 top-0 z-[1000] h-[var(--header-height)] w-full border-b border-[var(--border)] bg-[var(--bg)] shadow-sm">
+        <div className="relative mx-auto flex h-full max-w-7xl items-center justify-between gap-1 px-2 min-[360px]:gap-3 min-[360px]:px-4 sm:px-6 lg:px-8">
+          <Link to="/" className="flex shrink-0 items-center gap-1 min-[360px]:gap-2 sm:gap-3">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[var(--primary)] text-white shadow-lg shadow-violet-500/20 min-[360px]:h-10 min-[360px]:w-10 min-[360px]:rounded-2xl">
               <Music2 size={18} />
             </div>
             <div>
-              <p className="text-lg font-semibold tracking-tight">EchoRoom AI</p>
-              <p className="text-[10px] uppercase tracking-[0.2em] text-[var(--text-soft)]">Live scenes</p>
+              <p className="whitespace-nowrap text-sm font-semibold tracking-tight min-[360px]:text-base sm:text-lg">EchoRoom AI</p>
+              <p className="hidden text-[10px] uppercase tracking-[0.2em] text-[var(--text-soft)] sm:block">Live scenes</p>
             </div>
           </Link>
 
-          <nav className="hidden items-center gap-6 md:flex">
-            {navigation.map(({ name, to }) => (
-              <NavLink
-                key={to}
-                to={to}
-                className={({ isActive }) =>
-                  `text-sm font-medium transition ${
-                    isActive ? 'text-[var(--primary)]' : 'text-[var(--text-soft)] hover:text-[var(--text)]'
-                  }`
-                }
-              >
-                {name}
-              </NavLink>
+          <nav aria-label="Main navigation" className="hidden items-center gap-3 xl:flex">
+            {publicNavigation.map(({ name, to, end, hash }) => (
+              hash ? (
+                <a
+                  key={to}
+                  href={to}
+                  aria-current={location.hash === hash ? 'location' : undefined}
+                  className={`${location.hash === hash ? 'text-[var(--primary)]' : 'text-[var(--text-soft)] hover:text-[var(--text)]'} text-sm font-medium transition`}
+                >
+                  {name}
+                </a>
+              ) : to === '/' ? (
+                <Link
+                  key={to}
+                  to={to}
+                  aria-current={location.pathname === '/' && location.hash !== '#promoters' ? 'page' : undefined}
+                  className={`${location.pathname === '/' && location.hash !== '#promoters' ? 'text-[var(--primary)]' : 'text-[var(--text-soft)] hover:text-[var(--text)]'} text-sm font-medium transition`}
+                >
+                  {name}
+                </Link>
+              ) : (
+                <NavLink key={to} to={to} end={end} className={activeLinkClass}>
+                  {name}
+                </NavLink>
+              )
             ))}
-            <Link to="/events" className="text-sm font-medium text-[var(--text-soft)] transition hover:text-[var(--text)]">
-              Events
-            </Link>
-            <Link to="/artists" className="text-sm font-medium text-[var(--text-soft)] transition hover:text-[var(--text)]">
-              Artists
-            </Link>
-            <a
-              href="/#promoters"
-              className="text-sm font-medium text-[var(--text-soft)] transition hover:text-[var(--text)]"
-            >
-              Promoters
-            </a>
             {accountLinks.map(({ name, to }) => (
-              <NavLink
-                key={to}
-                to={to}
-                className={({ isActive }) =>
-                  `text-sm font-medium transition ${
-                    isActive ? 'text-[var(--primary)]' : 'text-[var(--text-soft)] hover:text-[var(--text)]'
-                  }`
-                }
-              >
+              <NavLink key={to} to={to} className={activeLinkClass}>
                 {name}
               </NavLink>
             ))}
           </nav>
 
-          <div className="flex items-center gap-3">
-            <NotificationBell />
-            <ThemeToggle className="hidden sm:inline-flex" />
+          <div className="flex shrink-0 items-center gap-1 min-[360px]:gap-2 sm:gap-3">
+            <div className="hidden sm:block">
+              <NotificationBell />
+            </div>
+            <ThemeToggle className="hidden xl:inline-flex" />
+            <div className="relative" ref={menuRef}>
+              <button
+                ref={menuButtonRef}
+                type="button"
+                aria-label="Home menu"
+                aria-expanded={mobileMenuOpen}
+                aria-controls="mobile-navigation"
+                onClick={() => setMobileMenuOpen((open) => !open)}
+                className="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--surface)] px-2 text-xs font-semibold text-[var(--text)] transition hover:border-[var(--primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)] min-[360px]:gap-2 min-[360px]:px-3 min-[360px]:text-sm xl:hidden"
+              >
+                <House size={16} aria-hidden="true" />
+                <span>Home</span>
+              </button>
+              {mobileMenuOpen && (
+                <div
+                  id="mobile-navigation"
+                  className="fixed right-4 top-[4.5rem] z-30 max-h-[min(70vh,32rem)] w-[min(20rem,calc(100vw-2rem))] overflow-y-auto rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-2 shadow-[var(--shadow)] xl:hidden"
+                >
+                  <nav aria-label="Mobile navigation" className="space-y-1">
+                    {publicNavigation.map(({ name, to, icon: Icon, end, hash }) => {
+                      const isHashActive = Boolean(hash && location.hash === hash)
+                      const isHomeActive = to === '/' && location.pathname === '/' && location.hash !== '#promoters'
+
+                      return hash ? (
+                        <a
+                          key={to}
+                          href={to}
+                          aria-current={isHashActive ? 'location' : undefined}
+                          onClick={() => setMobileMenuOpen(false)}
+                          className={mobileLinkClass(isHashActive)}
+                        >
+                          <Icon size={17} aria-hidden="true" />
+                          {name}
+                        </a>
+                      ) : to === '/' ? (
+                        <Link
+                          key={to}
+                          to={to}
+                          aria-current={isHomeActive ? 'page' : undefined}
+                          onClick={() => setMobileMenuOpen(false)}
+                          className={mobileLinkClass(isHomeActive)}
+                        >
+                          <Icon size={17} aria-hidden="true" />
+                          {name}
+                        </Link>
+                      ) : (
+                        <NavLink
+                          key={to}
+                          to={to}
+                          end={end}
+                          onClick={() => setMobileMenuOpen(false)}
+                          className={({ isActive }) => mobileLinkClass(isActive)}
+                        >
+                          <Icon size={17} aria-hidden="true" />
+                          {name}
+                        </NavLink>
+                      )
+                    })}
+                    {accountLinks.length > 0 && (
+                      <>
+                        <div className="my-2 border-t border-[var(--border)]" />
+                        {accountLinks.map(({ name, to }) => (
+                          <NavLink
+                            key={to}
+                            to={to}
+                            onClick={() => setMobileMenuOpen(false)}
+                            className={({ isActive }) => mobileLinkClass(isActive)}
+                          >
+                            <UserRound size={17} aria-hidden="true" />
+                            {name}
+                          </NavLink>
+                        ))}
+                      </>
+                    )}
+                    <div className="my-2 border-t border-[var(--border)]" />
+                    <div className="px-1 py-1">
+                      <ThemeToggle className="flex w-full justify-start rounded-xl border-0 bg-transparent shadow-none hover:bg-[var(--surface-strong)]" />
+                    </div>
+                  </nav>
+                </div>
+              )}
+            </div>
             {isAuthenticated ? (
               <>
                 <span className="hidden max-w-32 truncate text-sm font-medium text-[var(--text)] lg:inline">
@@ -111,14 +239,14 @@ export default function MainLayout() {
               <>
                 <Link
                   to="/login"
-                  className="inline-flex items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm font-medium text-[var(--text)] transition hover:border-[var(--primary)]"
+                  className="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--surface)] px-2 text-xs font-medium text-[var(--text)] transition hover:border-[var(--primary)] min-[360px]:gap-2 min-[360px]:px-3 min-[360px]:text-sm"
                 >
                   <UserRound size={16} aria-hidden="true" />
                   Sign in
                 </Link>
                 <Link
                   to="/register"
-                  className="hidden rounded-full bg-[var(--primary)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[var(--primary-strong)] sm:inline-flex"
+                  className="hidden min-h-10 items-center justify-center rounded-full bg-[var(--primary)] px-4 text-sm font-semibold text-white transition hover:bg-[var(--primary-strong)] xl:inline-flex"
                 >
                   Join
                 </Link>
@@ -126,32 +254,9 @@ export default function MainLayout() {
             )}
           </div>
         </div>
-        <nav
-          aria-label="Main navigation"
-          className="mx-auto flex max-w-7xl items-center gap-6 overflow-x-auto px-4 pb-3 text-xs font-medium text-[var(--text-soft)] md:hidden sm:px-6"
-        >
-          <Link to="/" className="shrink-0 hover:text-[var(--primary)]">
-            Discover
-          </Link>
-          <Link to="/events" className="shrink-0 hover:text-[var(--primary)]">
-            Events
-          </Link>
-          <Link to="/artists" className="shrink-0 hover:text-[var(--primary)]">
-            Artists
-          </Link>
-          <a href="/#promoters" className="shrink-0 hover:text-[var(--primary)]">
-            Promoters
-          </a>
-          {accountLinks.map(({ name, to }) => (
-            <Link key={to} to={to} className="shrink-0 hover:text-[var(--primary)]">
-              {name}
-            </Link>
-          ))}
-          <ThemeToggle className="ml-auto shrink-0 sm:hidden" />
-        </nav>
       </header>
 
-      <main className="mx-auto w-full max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+      <main className="mx-auto w-full max-w-7xl px-4 pb-10 pt-[calc(var(--header-height)+2.5rem)] sm:px-6 lg:px-8">
         <Outlet />
       </main>
 

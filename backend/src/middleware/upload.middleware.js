@@ -40,6 +40,13 @@ export function handleMulterError(err, req, res, next) {
     return res.status(400).json({ success: false, message: err.message });
   }
   if (err) {
+    // If the error already carries an HTTP status code (e.g., 403 from
+    // requireRole or 401 from authenticate), let it propagate to the
+    // application error handler so the correct status code is used.
+    // Otherwise it is a multer file-filter error and should be 400.
+    if (Number.isInteger(err.status) && err.status >= 400 && err.status <= 599) {
+      return next(err);
+    }
     return res.status(400).json({ success: false, message: err.message });
   }
   next();
