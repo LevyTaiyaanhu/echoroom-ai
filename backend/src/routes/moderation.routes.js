@@ -193,8 +193,8 @@ router.get("/admin/events", authenticate, requireRole("admin"), async (req, res,
       conditions.push(`e.status = $${params.length}`);
     }
     if (verified !== undefined) {
-      params.push(verified === "true");
-      conditions.push(`e.label = $${params.length}`);
+      const isVerified = verified === "true";
+      conditions.push(isVerified ? `e.label = 'verified'` : `e.label != 'verified'`);
     }
     if (hidden !== undefined) {
       params.push(hidden === "true");

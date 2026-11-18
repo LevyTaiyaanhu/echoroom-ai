@@ -97,6 +97,78 @@ function validateEventBody(body) {
   return { errors, artists, startAt, endAt };
 }
 
+function validateEventUpdateBody(body) {
+  const errors = [];
+
+  if (body.title !== undefined && body.title !== null) {
+    if (typeof body.title !== "string" || body.title.trim().length < 1 || body.title.trim().length > 200) {
+      errors.push("title must be 1-200 characters");
+    }
+  }
+
+  if (body.artists !== undefined && body.artists !== null) {
+    const artists = parseArtists(body.artists);
+    if (artists === undefined) {
+      errors.push("artists must be an array or comma-separated string");
+    } else if (artists.length === 0) {
+      errors.push("artists must not be empty");
+    }
+  }
+
+  if (body.venue !== undefined && body.venue !== null) {
+    if (typeof body.venue !== "string" || body.venue.trim().length < 1 || body.venue.trim().length > 200) {
+      errors.push("venue must be 1-200 characters");
+    }
+  }
+
+  if (body.city !== undefined && body.city !== null) {
+    if (typeof body.city !== "string" || body.city.trim().length < 1 || body.city.trim().length > 100) {
+      errors.push("city must be 1-100 characters");
+    }
+  }
+
+  if (body.start_at !== undefined && body.start_at !== null) {
+    const startAt = new Date(body.start_at);
+    if (isNaN(startAt.getTime())) errors.push("start_at must be a valid ISO timestamp");
+  }
+
+  if (body.end_at !== undefined && body.end_at !== null) {
+    const endAt = new Date(body.end_at);
+    if (isNaN(endAt.getTime())) errors.push("end_at must be a valid ISO timestamp");
+  }
+
+  if (body.start_at !== undefined && body.end_at !== undefined) {
+    const startAt = new Date(body.start_at);
+    const endAt = new Date(body.end_at);
+    if (!isNaN(startAt.getTime()) && !isNaN(endAt.getTime()) && endAt <= startAt) {
+      errors.push("end_at must be after start_at");
+    }
+  }
+
+  if (body.description !== undefined && body.description !== null) {
+    if (typeof body.description !== "string" || body.description.length > 5000) {
+      errors.push("description must be at most 5000 characters");
+    }
+  }
+  if (body.host !== undefined && body.host !== null) {
+    if (typeof body.host !== "string" || body.host.trim().length > 200) {
+      errors.push("host must be at most 200 characters");
+    }
+  }
+  if (body.ticket_price_info !== undefined && body.ticket_price_info !== null) {
+    if (typeof body.ticket_price_info !== "string" || body.ticket_price_info.length > 500) {
+      errors.push("ticket_price_info must be at most 500 characters");
+    }
+  }
+  if (body.booking_info !== undefined && body.booking_info !== null) {
+    if (typeof body.booking_info !== "string" || body.booking_info.length > 500) {
+      errors.push("booking_info must be at most 500 characters");
+    }
+  }
+
+  return { errors };
+}
+
 export function publicEvent(row, isOwner) {
   return {
     id: row.id,
@@ -251,7 +323,7 @@ router.get("/archive", async (req, res, next) => {
               e.status, e.label, e.verified_at, e.verification_invalidated_at,
               e.created_at, e.updated_at
        FROM echoroom.events e
-       WHERE (e.status = 'archived' OR e.status = 'cancelled' OR e.start_at <= NOW())
+       WHERE (e.status = 'archived' OR e.status = 'cancelled' OR e.end_at <= NOW())
           AND e.is_hidden = FALSE
        ORDER BY e.start_at DESC`
     );
@@ -303,7 +375,7 @@ router.put("/:id", authenticate, requireRole("promoter"), async (req, res, next)
       return res.status(403).json({ success: false, message: "You can only edit your own events" });
     }
 
-    const { errors, artists, startAt, endAt } = validateEventBody(req.body);
+    const { errors } = validateEventUpdateBody(req.body);
     if (errors.length > 0) {
       return res.status(400).json({ success: false, message: errors.join("; ") });
     }
@@ -318,9 +390,9 @@ router.put("/:id", authenticate, requireRole("promoter"), async (req, res, next)
       booking_info,
     } = req.body;
 
-    const newArtists = artists ?? row.artists;
-    const newStart = startAt ?? new Date(row.start_at);
-    const newEnd = endAt ?? new Date(row.end_at);
+    const newArtists = req.body.artists !== undefined ? parseArtists(req.body.artists) ?? row.artists : row.artists;
+    const newStart = req.body.start_at !== undefined ? new Date(req.body.start_at) : new Date(row.start_at);
+    const newEnd = req.body.end_at !== undefined ? new Date(req.body.end_at) : new Date(row.end_at);
 
     const materialChanged =
       (req.body.title !== undefined && req.body.title.trim() !== row.title) ||
@@ -340,13 +412,13 @@ router.put("/:id", authenticate, requireRole("promoter"), async (req, res, next)
       updateValues.push(value);
     };
 
-    setField("title", title.trim());
-    setField("description", description ?? null);
-    setField("artists", newArtists);
-    setField("venue", venue.trim());
-    setField("city", city.trim());
-    setField("start_at", newStart.toISOString());
-    setField("end_at", newEnd.toISOString());
+    if (title !== undefined) setField("title", title.trim());
+    if (description !== undefined) setField("description", description ?? null);
+    if (req.body.artists !== undefined) setField("artists", newArtists);
+    if (venue !== undefined) setField("venue", venue.trim());
+    if (city !== undefined) setField("city", city.trim());
+    if (req.body.start_at !== undefined) setField("start_at", newStart.toISOString());
+    if (req.body.end_at !== undefined) setField("end_at", newEnd.toISOString());
     if (host !== undefined) setField("host", host ? host.trim() : null);
     if (ticket_price_info !== undefined) setField("ticket_price_info", ticket_price_info ?? null);
     if (booking_info !== undefined) setField("booking_info", booking_info ?? null);
@@ -419,24 +491,5 @@ router.patch("/:id/cancel", authenticate, requireRole("promoter"), async (req, r
   }
 });
 
-// GET /api/events/archive — cancelled and expired events (public archive view)
-router.get("/archive", async (req, res, next) => {
-  try {
-    const result = await pool.query(
-      `SELECT e.id, e.promoter_id, e.title, e.description, e.artists, e.venue, e.city,
-              e.start_at, e.end_at, e.host, e.ticket_price_info, e.booking_info,
-              e.status, e.label, e.verified_at, e.verification_invalidated_at,
-              e.created_at, e.updated_at
-       FROM echoroom.events e
-       WHERE (e.status = 'archived' OR e.status = 'cancelled' OR e.start_at <= NOW())
-          AND e.is_hidden = FALSE
-       ORDER BY e.start_at DESC`
-    );
-
-    res.json({ success: true, events: result.rows.map((row) => publicEvent(row, false)) });
-  } catch (error) {
-    next(error);
-  }
-});
 
 export default router;
