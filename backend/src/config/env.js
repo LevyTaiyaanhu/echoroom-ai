@@ -1,3 +1,4 @@
+
 import "dotenv/config";
 
 const port = Number(process.env.PORT ?? 5000);
@@ -15,7 +16,6 @@ if (!jwtSecret || jwtSecret.length < 32) {
 }
 
 // Gemini models known to support image input and generateContent.
-// Keeping this list lets us fail fast at startup if GEMINI_MODEL is invalid.
 const VALID_GEMINI_MODELS = [
   "gemini-1.5-flash",
   "gemini-1.5-pro",
@@ -26,6 +26,7 @@ const VALID_GEMINI_MODELS = [
 ];
 
 const geminiModel = process.env.GEMINI_MODEL ?? "gemini-1.5-flash";
+
 if (!VALID_GEMINI_MODELS.includes(geminiModel)) {
   throw new Error(
     `GEMINI_MODEL "${geminiModel}" is not a recognized model. ` +
