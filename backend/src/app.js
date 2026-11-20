@@ -21,6 +21,14 @@ import {
 
 const app = express();
 
+app.get("/", (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: "EchoRoom AI Backend is running",
+    health: "/api/health",
+  });
+});
+
 app.disable("x-powered-by");
 
 app.use(helmet());

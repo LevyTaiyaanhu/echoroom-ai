@@ -19,44 +19,51 @@ export function resetGenAI() {
   genAI = null;
 }
 
-/**
- * Classify Gemini SDK errors into safe, user-facing messages.
- * Never leak the API key or raw stack details to the caller.
- */
 function classifyGeminiError(error) {
   const message = error?.message ?? String(error);
+  const lower = message.toLowerCase();
+  const code = Number(error?.status ?? error?.code);
+  console.error("Gemini error:", code || "", message.slice(0, 500));
 
-  if (message.includes("API key") || message.includes("authentication") || message.includes("401") || message.includes("403")) {
-    const err = new Error(
-      "Gemini API authentication failed. Check your API key configuration.",
-    );
-    err.status = 401;
+  const make = (text, status) => {
+    const err = new Error(text);
+    err.status = status;
     return err;
-  }
-  if (message.includes("quota") || message.includes("rate limit") || message.includes("429")) {
-    const err = new Error(
-      "Gemini API rate limit exceeded. Please try again later.",
-    );
-    err.status = 429;
-    return err;
-  }
-  if (message.includes("model") && (message.includes("not found") || message.includes("invalid"))) {
-    const err = new Error(
+  };
+
+  if (
+    code === 404 ||
+    (lower.includes("model") && (lower.includes("not found") || lower.includes("invalid")))
+  ) {
+    return make(
       "Gemini API model is invalid or not available. Check GEMINI_MODEL configuration.",
+      400,
     );
-    err.status = 400;
-    return err;
   }
-  if (message.includes("network") || message.includes("ECONNREFUSED") || message.includes("ETIMEDOUT") || message.includes("timeout")) {
-    const err = new Error(
-      "Gemini API connection failed. Please check your network and try again.",
-    );
-    err.status = 503;
-    return err;
+  if (
+    code === 401 ||
+    code === 403 ||
+    lower.includes("api key not valid") ||
+    lower.includes("api_key_invalid") ||
+    lower.includes("authentication") ||
+    lower.includes("permission denied")
+  ) {
+    return make("Gemini API authentication failed. Check your API key configuration.", 401);
   }
-  const err = new Error(`Gemini API error: ${message.slice(0, 200)}`);
-  err.status = 500;
-  return err;
+  if (code === 429 || lower.includes("quota") || lower.includes("rate limit")) {
+    return make("Gemini API rate limit exceeded. Please try again later.", 429);
+  }
+  if (
+    code === 503 ||
+    lower.includes("fetch failed") ||
+    lower.includes("network") ||
+    lower.includes("econnrefused") ||
+    lower.includes("etimedout") ||
+    lower.includes("timeout")
+  ) {
+    return make("Gemini API connection failed. Please check your network and try again.", 503);
+  }
+  return make(`Gemini API error: ${message.slice(0, 200)}`, 500);
 }
 
 const EXTRACT_PROMPT = `You are an assistant that extracts event information from music event flyers.
@@ -96,25 +103,20 @@ export async function extractEventFromImage(imageBuffer, mimeType) {
   const ai = getGenAI();
   const base64Image = imageBuffer.toString("base64");
 
-  let response;
+  let interaction;
   try {
-    response = await ai.models.generateContent({
+    interaction = await ai.interactions.create({
       model: env.geminiModel,
-      contents: [
-        {
-          role: "user",
-          parts: [
-            { text: EXTRACT_PROMPT },
-            { inlineData: { data: base64Image, mimeType } },
-          ],
-        },
+      input: [
+        { type: "text", text: EXTRACT_PROMPT },
+        { type: "image", data: base64Image, mime_type: mimeType },
       ],
     });
   } catch (error) {
     throw classifyGeminiError(error);
   }
 
-  const text = (response.text ?? "").trim();
+  const text = (interaction.output_text ?? "").trim();
 
   const cleaned = text
     .replace(/^```json\s*/, "")
@@ -146,22 +148,17 @@ export async function generateEventDescription(eventDetails) {
   const ai = getGenAI();
   const prompt = DESCRIPTION_PROMPT_TEMPLATE(eventDetails);
 
-  let response;
+  let interaction;
   try {
-    response = await ai.models.generateContent({
+    interaction = await ai.interactions.create({
       model: env.geminiModel,
-      contents: [
-        {
-          role: "user",
-          parts: [{ text: prompt }],
-        },
-      ],
+      input: prompt,
     });
   } catch (error) {
     throw classifyGeminiError(error);
   }
 
-  const description = (response.text ?? "").trim();
+  const description = (interaction.output_text ?? "").trim();
   if (!description) {
     const err = new Error("Gemini returned an empty event description");
     err.status = 400;
