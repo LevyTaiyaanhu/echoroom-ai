@@ -20,7 +20,13 @@ export function getDatabaseConfig() {
     ca = certificateContent.replace(/\\n/g, "\n").trim();
   } else if (certificatePath) {
     // Supports local development using a certificate file.
-    ca = readFileSync(resolve(certificatePath), "utf8").trim();
+    try {
+      ca = readFileSync(resolve(certificatePath), "utf8").trim();
+    } catch (error) {
+      throw new Error(
+        `Failed to read CA certificate from path '${certificatePath}': ${error.message}`,
+      );
+    }
   } else {
     throw new Error(
       "DATABASE_CA_CERT or DATABASE_CA_CERT_PATH is required",
