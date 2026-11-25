@@ -1,213 +1,429 @@
 # EchoRoom AI
 
-EchoRoom AI is a Zimbabwe-focused music event discovery and promotion web
-application. It brings event listings, artist and promoter profiles, and fan
-engagement tools together in one place, so people can discover what's happening
-and promoters can share event information more clearly.
+**Discover Zimbabwe's music scene in one place.**
 
-## What you can do
+EchoRoom AI is a music event discovery and promotion platform built for Zimbabwe. It brings music events, artists, promoters, and fans together in one place.
 
-- Browse and search music events and artist profiles.
-- Create accounts and follow artists or promoters.
-- Save events and receive notifications.
-- Create and manage promoter events and profiles.
-- Use AI-assisted tools to extract details from event flyers, draft event
-  descriptions, and identify possible duplicate events.
-- Review reported content using moderation tools.
+Instead of searching through different WhatsApp groups and social media pages for event flyers, users can discover upcoming events, explore artist profiles, follow their favourite artists, and stay updated on what's happening.
 
-## How it works
+The platform also uses AI to help promoters extract event information from flyers, write event descriptions, and identify possible duplicate events.
 
-- **Frontend:** React, Vite, and Tailwind CSS
-- **Backend:** Node.js and Express REST API
-- **Database:** PostgreSQL (configured for Supabase)
-- **AI features:** Google Gemini API
+## Features
 
-The frontend is a responsive web app and includes a Progressive Web App (PWA)
-manifest and service worker. It can be opened in a desktop or mobile browser.
-It is not a native Android or iOS application.
+### For fans
+- Browse and search upcoming music events.
+- Discover artists and view their profiles.
+- Follow artists and promoters.
+- Save events for later.
+- Receive notifications about events.
+- Like, view, and share events.
 
-## Requirements
+### For artists and promoters
+- Create and manage profiles.
+- Publish and manage music events.
+- Promote events to a wider audience.
+- Use AI tools to extract information from event flyers.
+- Generate event descriptions.
+- Identify possible duplicate event listings.
 
-- Node.js 22.x and npm
-- A Supabase PostgreSQL database and its CA certificate
-- A Google Gemini API key to use the AI features
+### For administrators
+- Review reported content.
+- Manage and moderate platform activity.
 
-Check your installed versions:
+## Technologies Used
+
+| Part | Technology |
+|---|---|
+| Frontend | React, Vite, Tailwind CSS |
+| Backend | Node.js, Express.js |
+| Database | PostgreSQL (Supabase) |
+| AI integration | Google Gemini API |
+| Frontend hosting | Vercel |
+| Backend hosting | Render |
+
+EchoRoom AI is a responsive web application and supports Progressive Web App (PWA) features. It can be accessed using a desktop or mobile browser. It is not a native Android or iOS application.
+
+---
+
+# Getting Started
+
+You can run EchoRoom AI locally on Windows or Ubuntu Linux. For iPhone and iPad, you can access the deployed website through Safari.
+
+## 1. Requirements
+
+Before running the project locally, make sure you have the following installed:
+
+- **Node.js 22.x** – runs the JavaScript backend and frontend development tools.
+- **npm** – installs the project dependencies. It comes with Node.js.
+- **Git** – downloads the project from GitHub.
+- **A Supabase account** – provides the PostgreSQL database.
+- **A Google Gemini API key** – required for AI-powered features.
+
+You can check whether Node.js and npm are installed by running:
 
 ```bash
 node --version
 npm --version
 ```
 
-## Run locally
+You should have Node.js 22.x installed.
 
-These instructions work on Windows, Linux, and macOS. Run commands from the
-repository root unless a command first changes directory.
+## 2. Download the Project
 
-### 1. Get the project and create environment files
-
-Clone the repository, then change into its directory:
+Open your terminal or command prompt and run:
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/LevyTaiyaanhu/echoroom-ai.git
 cd echoroom-ai
 ```
 
-On **Windows PowerShell**:
+This downloads the project to your computer.
+
+## 3. Configure Environment Variables
+
+The project uses environment files to store database settings, API keys, and application configuration.
+
+First, create the environment files.
+
+### Windows PowerShell
+
+Run these commands from the project folder:
 
 ```powershell
 Copy-Item backend/.env.example backend/.env
 Copy-Item frontend/.env.example frontend/.env
 ```
 
-On **Linux or macOS**:
+### Ubuntu Linux
+
+Run:
 
 ```bash
 cp backend/.env.example backend/.env
 cp frontend/.env.example frontend/.env
 ```
 
-### 2. Configure the backend
+### Configure the backend
 
-Edit `backend/.env` and set:
+Open `backend/.env` and provide your own settings:
 
-| Variable | What to set |
+| Variable | Description |
 |---|---|
 | `DATABASE_URL` | Your Supabase PostgreSQL connection string |
-| `DATABASE_CA_CERT_PATH` | `certs/supabase-ca.crt` for local development |
+| `DATABASE_CA_CERT_PATH` | Path to the Supabase CA certificate |
 | `JWT_SECRET` | A private random string of at least 32 characters |
-| `GEMINI_API_KEY` | Your key from [Google AI Studio](https://aistudio.google.com/) |
-| `CLIENT_URL` | `http://localhost:5173` for local browser access |
+| `GEMINI_API_KEY` | Your Google Gemini API key |
+| `CLIENT_URL` | Frontend address, normally `http://localhost:5173` |
 
-The example file also sets the development port and Gemini model. Keep the
-Gemini key and database credentials in the backend environment file only; do
-not put secrets in `frontend/.env` or commit either `.env` file.
+For local development, the certificate path is:
 
-The frontend example uses `VITE_API_BASE_URL=http://localhost:5000/api`, which
-matches the local backend. Change it only if your API runs at a different URL.
+```env
+DATABASE_CA_CERT_PATH=certs/supabase-ca.crt
+```
 
-### 3. Install dependencies and migrate the database
+Keep your database credentials, JWT secret, and Gemini API key private. Never upload your `.env` files to GitHub.
 
-Open a terminal in the repository root and run:
+### Configure the frontend
+
+Open `frontend/.env` and set:
+
+```env
+VITE_API_BASE_URL=http://localhost:5000/api
+```
+
+This tells the frontend where to find the local backend API.
+
+**Important:** Only use the variable name expected by the frontend source code. The example above follows the project's documented configuration.
+
+## 4. Install Dependencies
+
+The frontend and backend have separate dependencies, so install them separately.
+
+### Install backend dependencies
 
 ```bash
 cd backend
 npm ci
-npm run db:migrate
 ```
 
-The migration command creates or updates the database tables. It needs a valid
-database URL and CA certificate in `backend/.env`.
+### Install frontend dependencies
 
-### 4. Start the backend and frontend
-
-In the first terminal, from `backend/`, start the API:
-
-```bash
-npm run dev
-```
-
-In a second terminal, from the repository root, start the frontend:
+Open another terminal in the project folder and run:
 
 ```bash
 cd frontend
 npm ci
+```
+
+Wait for both installations to finish.
+
+## 5. Set Up the Database
+
+Before starting the application for the first time, make sure your Supabase database is configured and your backend environment variables are correct.
+
+From the backend folder, run:
+
+```bash
+npm run db:migrate
+```
+
+This creates or updates the database tables required by the application.
+
+You normally need to run migrations when setting up the database or when the project introduces new migrations.
+
+## 6. Run EchoRoom AI Locally
+
+You need two terminals: one for the backend and another for the frontend.
+
+### Start the backend
+
+Open your first terminal:
+
+```bash
+cd echoroom-ai/backend
 npm run dev
 ```
 
-Open the Vite URL shown in the terminal (normally
-`http://localhost:5173`). The backend API runs at `http://localhost:5000`; check
-that it is responding at `http://localhost:5000/api/health`.
+The backend should start at:
 
-To run the backend tests, use a terminal in `backend/`:
+```text
+http://localhost:5000
+```
+
+You can check whether it is running by opening:
+
+```text
+http://localhost:5000/api/health
+```
+
+### Start the frontend
+
+Open a second terminal:
+
+```bash
+cd echoroom-ai/frontend
+npm run dev
+```
+
+Vite normally starts the frontend at:
+
+```text
+http://localhost:5173
+```
+
+Open that address in your browser to use EchoRoom AI.
+
+---
+
+# Running EchoRoom AI on Different Devices
+
+## Windows
+
+**What you need to install:**
+
+1. Node.js 22.x.
+2. Git.
+3. A code editor such as Visual Studio Code.
+
+**Steps:**
+
+1. Install Node.js and Git.
+2. Open Visual Studio Code.
+3. Open the terminal.
+4. Clone the repository:
+
+```powershell
+git clone https://github.com/LevyTaiyaanhu/echoroom-ai.git
+cd echoroom-ai
+```
+
+5. Create the backend and frontend `.env` files using the PowerShell commands above.
+6. Configure your environment variables.
+7. Install backend and frontend dependencies using `npm ci`.
+8. Run the database migration from the backend folder:
+
+```powershell
+npm run db:migrate
+```
+
+9. Start the backend in one terminal:
+
+```powershell
+cd backend
+npm run dev
+```
+
+10. Start the frontend in another terminal:
+
+```powershell
+cd frontend
+npm run dev
+```
+
+11. Open `http://localhost:5173` in your browser.
+
+**Windows is now ready to run EchoRoom AI locally.**
+
+## Ubuntu Linux
+
+**What you need to install:**
+
+1. Node.js 22.x.
+2. npm.
+3. Git.
+4. A code editor such as Visual Studio Code.
+
+If Git is not installed, open your terminal and run:
+
+```bash
+sudo apt update
+sudo apt install git
+```
+
+Install Node.js 22.x using a trusted installation method, such as the official Node.js distribution or Node Version Manager (nvm).
+
+Check your installations:
+
+```bash
+node --version
+npm --version
+git --version
+```
+
+**Steps:**
+
+1. Open your Ubuntu terminal.
+2. Clone the repository:
+
+```bash
+git clone https://github.com/LevyTaiyaanhu/echoroom-ai.git
+cd echoroom-ai
+```
+
+3. Create your environment files:
+
+```bash
+cp backend/.env.example backend/.env
+cp frontend/.env.example frontend/.env
+```
+
+4. Configure the environment variables.
+5. Install backend dependencies:
+
+```bash
+cd backend
+npm ci
+```
+
+6. Run the database migration:
+
+```bash
+npm run db:migrate
+```
+
+7. Start the backend:
+
+```bash
+npm run dev
+```
+
+8. Open another terminal and install frontend dependencies:
+
+```bash
+cd echoroom-ai/frontend
+npm ci
+```
+
+9. Start the frontend:
+
+```bash
+npm run dev
+```
+
+10. Open `http://localhost:5173` in your browser.
+
+**Ubuntu Linux is now ready to run EchoRoom AI locally.**
+
+## iPhone and iPad (iOS)
+
+EchoRoom AI does not require a separate iOS application. It runs as a responsive web application through Safari.
+
+**What you need:**
+
+- An iPhone or iPad.
+- Safari browser.
+- An internet connection.
+
+**How to use EchoRoom AI:**
+
+1. Open Safari on your iPhone or iPad.
+2. Visit the deployed website:
+
+   `https://echoroom-ai-y2fk.vercel.app/`
+
+3. Browse events, discover artists, and use the available platform features.
+4. If you want to add EchoRoom AI to your Home Screen:
+   - Tap the Share button in Safari.
+   - Select **Add to Home Screen**.
+   - Confirm the installation.
+
+EchoRoom AI will then have a Home Screen icon, making it easier to open like an app.
+
+**Do I need to install Node.js or Visual Studio Code on my iPhone?**
+
+No. Those tools are only needed when developing and running the project locally on a computer. For normal use, Safari and an internet connection are enough.
+
+The website must be deployed using HTTPS for Home Screen installation and PWA features.
+
+---
+
+# Running Tests
+
+To run the backend tests, open a terminal in the backend folder:
 
 ```bash
 npm test
 ```
 
-To build the frontend for deployment, use a terminal in `frontend/`:
+# Building the Frontend
+
+To create a production build of the frontend:
 
 ```bash
+cd frontend
 npm run build
 ```
 
-## Use on an iPhone or iPad
+The production files will be generated in the `frontend/dist` directory.
 
-EchoRoom AI runs in Safari as a responsive website; there is no native iOS app
-to install.
+# Live Deployment
 
-For regular use, open the deployed HTTPS website in Safari. To add the web app
-to the Home Screen, use Safari's **Share** button and choose **Add to Home
-Screen**. Home Screen installation and offline app-shell support require the
-deployed site to use HTTPS.
+EchoRoom AI is deployed using the following services:
 
-To test from an iPhone or iPad while developing:
+| Service | Platform |
+|---|---|
+| Frontend | Vercel |
+| Backend API | Render |
+| Database | Supabase |
 
-1. Connect the computer and iPhone/iPad to the same trusted Wi-Fi network.
-2. Find the computer's local IP address and use it in place of
-   `<computer-ip>` below.
-3. Set `CLIENT_URL` in `backend/.env` to
-   `http://<computer-ip>:5173`.
-4. Set `VITE_API_BASE_URL` in `frontend/.env` to
-   `http://<computer-ip>:5000/api`.
-5. Start the backend normally. Start Vite with this command from `frontend/`:
+**Live website:** https://echoroom-ai-y2fk.vercel.app/
 
-   ```bash
-   npm run dev -- --host 0.0.0.0
-   ```
+**Backend API:** https://echoroom-ai.onrender.com/
 
-6. If your computer's firewall asks, allow the development servers on the
-   trusted local network. In iPhone/iPad Safari, open
-   `http://<computer-ip>:5173`.
+**Backend health check:** https://echoroom-ai.onrender.com/api/health
 
-Restart the frontend after changing its `.env` file. Local-network HTTP access
-is for development; use HTTPS for a deployed site and Home Screen installation.
+# Important Security Notes
 
-## API overview
+- Never commit `.env` files to GitHub.
+- Keep database passwords and API keys private.
+- Never expose the Gemini API key in frontend code.
+- Variables beginning with `VITE_` are included in the frontend browser build. Never store private credentials in them.
+- Use HTTPS for production deployments.
 
-All API routes are under `/api`.
+---
 
-| Method | Endpoint | Purpose |
-|---|---|---|
-| `GET` | `/api/health` | Check whether the API is responding |
-| `POST` | `/api/ai/extract-flyer` | Extract event details from an uploaded flyer |
-| `POST` | `/api/ai/generate-description` | Draft promotional event text |
-| `POST` | `/api/ai/detect-duplicates` | Find possible duplicate events |
+## About the Project
 
-AI routes require authentication. Flyer extraction and description generation
-are for promoter accounts. Flyer uploads accept JPEG, PNG, WEBP, or GIF images
-up to 5 MB; extracted fields that are not present in the image are returned as
-missing rather than invented.
+EchoRoom AI aims to make music event discovery and promotion easier in Zimbabwe by giving artists, promoters, venues, and fans a central place to connect.
 
-## Configuration reference
-
-| Variable | Required | Default | Description |
-|---|---|---|---|
-| `NODE_ENV` | No | `development` | Application environment |
-| `PORT` | No | `5000` | Backend HTTP port |
-| `CLIENT_URL` | No | `http://localhost:5173` | Allowed frontend origin for CORS |
-| `DATABASE_URL` | Yes for database features | — | PostgreSQL connection string |
-| `DATABASE_CA_CERT_PATH` | Yes locally | — | Path to the PostgreSQL CA certificate |
-| `DATABASE_CA_CERT` | Alternative | — | CA certificate PEM content, for serverless deployments |
-| `JWT_SECRET` | Yes | — | JWT signing secret; must be at least 32 characters |
-| `JWT_EXPIRES_IN` | No | `15m` | Token expiration |
-| `GEMINI_API_KEY` | For AI features | — | Google Gemini API key; keep it on the backend |
-| `GEMINI_MODEL` | No | `gemini-1.5-flash` | Gemini model ID |
-| `MAX_FILE_SIZE` | No | `5242880` | Maximum upload size in bytes (5 MB) |
-| `VITE_API_BASE_URL` | No | `http://localhost:5000/api` | Frontend API base URL |
-
-## Deployment
-
-The frontend includes Netlify configuration in `frontend/netlify.toml`. The
-backend includes a Vercel serverless entry point and configuration in
-`backend/api/` and `backend/vercel.json`. Configure the environment variables
-for each hosting provider; for a serverless backend, provide the certificate
-through `DATABASE_CA_CERT` rather than a local certificate path. Set
-`CLIENT_URL` to the deployed frontend's origin.
-
-## Security notes
-
-- Never commit `.env` files, database credentials, JWT secrets, or API keys.
-- Keep `GEMINI_API_KEY` on the backend; frontend environment variables prefixed
-  with `VITE_` are included in the browser build and must not contain secrets.
-- Use HTTPS for deployed environments.
+**Built with the goal of bringing Zimbabwe's music community closer together.**

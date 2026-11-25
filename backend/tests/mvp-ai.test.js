@@ -79,6 +79,57 @@ test("POST /api/ai/extract-flyer returns 400 when no image uploaded", async (t) 
   }
 });
 
+test("POST /api/ai/extract-flyer returns structured extracted event info", async (t) => {
+  const email = `mvaifasuccess${suffix}@example.com`;
+  try {
+    await register(email, "promoter", "MVP AI Success Promo");
+    const token = await login(email);
+    const genAIInstance = getGenAI();
+    const originalGenerateContent = genAIInstance.models.generateContent;
+    genAIInstance.models.generateContent = async () => ({
+      text: JSON.stringify({
+        title: "Summer Music Fest",
+        artists: ["DJ Kolla", "Tocky Vibes"],
+        venue: "Garden City",
+        city: "Harare",
+        event_date: "2026-12-20",
+        event_time: "19:00",
+        event_end_date: "2026-12-20",
+        event_end_time: "23:00",
+        host: "ZimEvents",
+        ticket_price: "$10",
+        booking_info: "Call 0772 123 456",
+        description: "A summer music festival featuring top local artists.",
+      }),
+    });
+    try {
+      const res = await request(app)
+        .post("/api/ai/extract-flyer")
+        .set("Authorization", `Bearer ${token}`)
+        .attach("flyer", Buffer.from("fake-image-bytes"), "flyer.jpg");
+      assert.equal(res.status, 200);
+      assert.equal(res.body.success, true);
+      assert.equal(res.body.extracted.title, "Summer Music Fest");
+      assert.deepStrictEqual(res.body.extracted.artists, ["DJ Kolla", "Tocky Vibes"]);
+      assert.equal(res.body.extracted.venue, "Garden City");
+      assert.equal(res.body.extracted.city, "Harare");
+      assert.equal(res.body.extracted.event_date, "2026-12-20");
+      assert.equal(res.body.extracted.event_time, "19:00");
+      assert.equal(res.body.extracted.event_end_date, "2026-12-20");
+      assert.equal(res.body.extracted.event_end_time, "23:00");
+      assert.equal(res.body.extracted.host, "ZimEvents");
+      assert.equal(res.body.extracted.ticket_price, "$10");
+      assert.equal(res.body.extracted.booking_info, "Call 0772 123 456");
+      assert.equal(res.body.extracted.description, "A summer music festival featuring top local artists.");
+    } finally {
+      genAIInstance.models.generateContent = originalGenerateContent;
+    }
+  } finally {
+    await cleanup(email);
+    resetGenAI();
+  }
+});
+
 test("POST /api/ai/detect-duplicates requires title", async (t) => {
   const email = `mvada${suffix}@example.com`;
   try {
@@ -201,8 +252,8 @@ test("extractEventFromImage propagates Gemini API errors", async (t) => {
   resetGenAI();
   try {
     const genAIInstance = getGenAI();
-    const originalGenerateContent = genAIInstance.interactions.create;
-    genAIInstance.interactions.create = async () => {
+    const originalGenerateContent = genAIInstance.models.generateContent;
+    genAIInstance.models.generateContent = async () => {
       throw new Error("Gemini API rate limit exceeded");
     };
     try {
@@ -211,7 +262,7 @@ test("extractEventFromImage propagates Gemini API errors", async (t) => {
         /Gemini API rate limit exceeded/,
       );
     } finally {
-      genAIInstance.interactions.create = originalGenerateContent;
+      genAIInstance.models.generateContent = originalGenerateContent;
     }
   } finally {
     env.geminiApiKey = originalKey;
@@ -225,8 +276,8 @@ test("generateEventDescription propagates Gemini API errors", async (t) => {
   resetGenAI();
   try {
     const genAIInstance = getGenAI();
-    const originalGenerateContent = genAIInstance.interactions.create;
-    genAIInstance.interactions.create = async () => {
+    const originalGenerateContent = genAIInstance.models.generateContent;
+    genAIInstance.models.generateContent = async () => {
       throw new Error("Gemini API service unavailable");
     };
     try {
@@ -235,7 +286,7 @@ test("generateEventDescription propagates Gemini API errors", async (t) => {
         /Gemini API service unavailable/,
       );
     } finally {
-      genAIInstance.interactions.create = originalGenerateContent;
+      genAIInstance.models.generateContent = originalGenerateContent;
     }
   } finally {
     env.geminiApiKey = originalKey;
@@ -267,8 +318,8 @@ test("extractEventFromImage propagates rate limit error with status 429", async 
   resetGenAI();
   try {
     const genAIInstance = getGenAI();
-    const originalGenerateContent = genAIInstance.interactions.create;
-    genAIInstance.interactions.create = async () => {
+    const originalGenerateContent = genAIInstance.models.generateContent;
+    genAIInstance.models.generateContent = async () => {
       throw new Error("Gemini API rate limit exceeded");
     };
     try {
@@ -278,7 +329,7 @@ test("extractEventFromImage propagates rate limit error with status 429", async 
       assert.match(err.message, /Gemini API rate limit exceeded/);
       assert.equal(err.status, 429);
     } finally {
-      genAIInstance.interactions.create = originalGenerateContent;
+      genAIInstance.models.generateContent = originalGenerateContent;
     }
   } finally {
     env.geminiApiKey = originalKey;
@@ -292,8 +343,8 @@ test("extractEventFromImage propagates authentication error with status 401", as
   resetGenAI();
   try {
     const genAIInstance = getGenAI();
-    const originalGenerateContent = genAIInstance.interactions.create;
-    genAIInstance.interactions.create = async () => {
+    const originalGenerateContent = genAIInstance.models.generateContent;
+    genAIInstance.models.generateContent = async () => {
       throw new Error("Gemini API authentication failed");
     };
     try {
@@ -303,7 +354,7 @@ test("extractEventFromImage propagates authentication error with status 401", as
       assert.match(err.message, /Gemini API authentication failed/);
       assert.equal(err.status, 401);
     } finally {
-      genAIInstance.interactions.create = originalGenerateContent;
+      genAIInstance.models.generateContent = originalGenerateContent;
     }
   } finally {
     env.geminiApiKey = originalKey;
@@ -317,8 +368,8 @@ test("extractEventFromImage propagates invalid model error with status 400", asy
   resetGenAI();
   try {
     const genAIInstance = getGenAI();
-    const originalGenerateContent = genAIInstance.interactions.create;
-    genAIInstance.interactions.create = async () => {
+    const originalGenerateContent = genAIInstance.models.generateContent;
+    genAIInstance.models.generateContent = async () => {
       throw new Error("Gemini API model is invalid or not found");
     };
     try {
@@ -328,7 +379,7 @@ test("extractEventFromImage propagates invalid model error with status 400", asy
       assert.match(err.message, /Gemini API model is invalid/);
       assert.equal(err.status, 400);
     } finally {
-      genAIInstance.interactions.create = originalGenerateContent;
+      genAIInstance.models.generateContent = originalGenerateContent;
     }
   } finally {
     env.geminiApiKey = originalKey;
@@ -342,8 +393,8 @@ test("extractEventFromImage propagates network error with status 503", async (t)
   resetGenAI();
   try {
     const genAIInstance = getGenAI();
-    const originalGenerateContent = genAIInstance.interactions.create;
-    genAIInstance.interactions.create = async () => {
+    const originalGenerateContent = genAIInstance.models.generateContent;
+    genAIInstance.models.generateContent = async () => {
       throw new Error("Network error: ETIMEDOUT connecting to Gemini API");
     };
     try {
@@ -353,7 +404,7 @@ test("extractEventFromImage propagates network error with status 503", async (t)
       assert.match(err.message, /Gemini API connection failed/);
       assert.equal(err.status, 503);
     } finally {
-      genAIInstance.interactions.create = originalGenerateContent;
+      genAIInstance.models.generateContent = originalGenerateContent;
     }
   } finally {
     env.geminiApiKey = originalKey;
@@ -367,8 +418,8 @@ test("extractEventFromImage throws 400 on non-JSON response", async (t) => {
   resetGenAI();
   try {
     const genAIInstance = getGenAI();
-    const originalGenerateContent = genAIInstance.interactions.create;
-    genAIInstance.interactions.create = async () => ({ output_text: "not valid json at all" });
+    const originalGenerateContent = genAIInstance.models.generateContent;
+    genAIInstance.models.generateContent = async () => ({ text: "not valid json at all" });
     try {
       let err;
       try { await extractEventFromImage(Buffer.from("fake-image"), "image/jpeg"); } catch (e) { err = e; }
@@ -376,7 +427,7 @@ test("extractEventFromImage throws 400 on non-JSON response", async (t) => {
       assert.match(err.message, /Gemini returned non-JSON response/);
       assert.equal(err.status, 400);
     } finally {
-      genAIInstance.interactions.create = originalGenerateContent;
+      genAIInstance.models.generateContent = originalGenerateContent;
     }
   } finally {
     env.geminiApiKey = originalKey;
@@ -390,8 +441,8 @@ test("generateEventDescription throws 400 on empty response", async (t) => {
   resetGenAI();
   try {
     const genAIInstance = getGenAI();
-    const originalGenerateContent = genAIInstance.interactions.create;
-    genAIInstance.interactions.create = async () => ({ output_text: "" });
+    const originalGenerateContent = genAIInstance.models.generateContent;
+    genAIInstance.models.generateContent = async () => ({ text: "" });
     try {
       let err;
       try { await generateEventDescription({ title: "Test" }); } catch (e) { err = e; }
@@ -399,7 +450,7 @@ test("generateEventDescription throws 400 on empty response", async (t) => {
       assert.match(err.message, /Gemini returned an empty event description/);
       assert.equal(err.status, 400);
     } finally {
-      genAIInstance.interactions.create = originalGenerateContent;
+      genAIInstance.models.generateContent = originalGenerateContent;
     }
   } finally {
     env.geminiApiKey = originalKey;

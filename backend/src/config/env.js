@@ -12,7 +12,7 @@ if (!jwtSecret || jwtSecret.length < 32) {
   throw new Error("JWT_SECRET must be configured with at least 32 characters");
 }
 
-const geminiModel = (process.env.GEMINI_MODEL ?? "gemini-4-hydrogen").trim();
+const geminiModel = (process.env.GEMINI_MODEL ?? "gemini-1.5-flash").trim();
 
 if (!/^gemini-[\w.-]+$/.test(geminiModel)) {
   throw new Error(`GEMINI_MODEL "${geminiModel}" is not a valid Gemini model name`);

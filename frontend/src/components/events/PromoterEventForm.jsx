@@ -96,25 +96,39 @@ export default function PromoterEventForm({ event, saving, error, onSubmit, onCa
       const { extracted, note } = await extractFlyer(flyerFile, setUploadProgress)
       const updates = {}
 
-      if (typeof extracted.title === 'string') updates.title = extracted.title
-      if (Array.isArray(extracted.artists)) {
-        updates.artists = extracted.artists.filter((artist) => typeof artist === 'string').join(', ')
-      } else if (typeof extracted.artists === 'string') {
-        updates.artists = extracted.artists
+      // Only populate fields the promoter has not already filled in manually.
+      // Extraction never overwrites information the promoter entered themselves.
+      if (!values.title.trim() && typeof extracted.title === 'string') updates.title = extracted.title
+      if (!values.artists.trim()) {
+        if (Array.isArray(extracted.artists)) {
+          updates.artists = extracted.artists.filter((artist) => typeof artist === 'string').join(', ')
+        } else if (typeof extracted.artists === 'string') {
+          updates.artists = extracted.artists
+        }
       }
-      if (typeof extracted.venue === 'string') updates.venue = extracted.venue
-      if (typeof extracted.city === 'string') updates.city = extracted.city
-      if (typeof extracted.host === 'string') updates.host = extracted.host
-      if (typeof extracted.ticket_price === 'string') updates.ticket_price_info = extracted.ticket_price
-      if (typeof extracted.booking_info === 'string') updates.booking_info = extracted.booking_info
+      if (!values.venue.trim() && typeof extracted.venue === 'string') updates.venue = extracted.venue
+      if (!values.city.trim() && typeof extracted.city === 'string') updates.city = extracted.city
+      if (!values.host.trim() && typeof extracted.host === 'string') updates.host = extracted.host
+      if (!values.ticket_price_info.trim() && typeof extracted.ticket_price === 'string') updates.ticket_price_info = extracted.ticket_price
+      if (!values.booking_info.trim() && typeof extracted.booking_info === 'string') updates.booking_info = extracted.booking_info
+      if (!values.description.trim() && typeof extracted.description === 'string') updates.description = extracted.description
 
-      if (
+      if (!values.start_at &&
         typeof extracted.event_date === 'string' &&
         /^\d{4}-\d{2}-\d{2}$/.test(extracted.event_date) &&
         typeof extracted.event_time === 'string' &&
         /^\d{2}:\d{2}$/.test(extracted.event_time)
       ) {
         updates.start_at = `${extracted.event_date}T${extracted.event_time}`
+      }
+
+      if (!values.end_at &&
+        typeof extracted.event_end_date === 'string' &&
+        /^\d{4}-\d{2}-\d{2}$/.test(extracted.event_end_date) &&
+        typeof extracted.event_end_time === 'string' &&
+        /^\d{2}:\d{2}$/.test(extracted.event_end_time)
+      ) {
+        updates.end_at = `${extracted.event_end_date}T${extracted.event_end_time}`
       }
 
       updateFields(updates)

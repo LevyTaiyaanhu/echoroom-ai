@@ -73,18 +73,22 @@ Analyze the image and return a JSON object with the following fields:
 - artists: Array of performer/artist names (string array)
 - venue: Venue name (string)
 - city: City name (string)
-- event_date: Event date in ISO format YYYY-MM-DD (string)
-- event_time: Event time in HH:MM 24-hour format (string)
+- event_date: Event start date in ISO format YYYY-MM-DD (string)
+- event_time: Event start time in HH:MM 24-hour format (string)
+- event_end_date: Event end date in ISO format YYYY-MM-DD (string)
+- event_end_time: Event end time in HH:MM 24-hour format (string)
 - host: Event host or organizer (string)
 - ticket_price: Ticket price information (string)
 - booking_info: Booking or contact information (string)
+- description: Short description of the event based on what is visible on the flyer (string)
 
 Rules:
 - Only include fields you can see or reasonably infer from the flyer.
 - If a field is not visible, set it to null (do not omit it).
 - Return ONLY valid JSON, no markdown code fences, no extra text.
 - For dates, convert relative dates (e.g., "this Friday") to an absolute date based on the context; if unsure, set to null.
-- For times, use 24-hour format (e.g., "19:00").`;
+- For times, use 24-hour format (e.g., "19:00").
+- Never invent event information that is not visible on the flyer.`;
 
 const DESCRIPTION_PROMPT_TEMPLATE = (details) => `Write a professional, engaging event description for a music event with the following details:
 
@@ -105,18 +109,23 @@ export async function extractEventFromImage(imageBuffer, mimeType) {
 
   let interaction;
   try {
-    interaction = await ai.interactions.create({
+    interaction = await ai.models.generateContent({
       model: env.geminiModel,
-      input: [
-        { type: "text", text: EXTRACT_PROMPT },
-        { type: "image", data: base64Image, mime_type: mimeType },
+      contents: [
+        {
+          role: "user",
+          parts: [
+            { text: EXTRACT_PROMPT },
+            { inlineData: { data: base64Image, mime_type: mimeType } },
+          ],
+        },
       ],
     });
   } catch (error) {
     throw classifyGeminiError(error);
   }
 
-  const text = (interaction.output_text ?? "").trim();
+  const text = (interaction.text ?? "").trim();
 
   const cleaned = text
     .replace(/^```json\s*/, "")
@@ -150,15 +159,15 @@ export async function generateEventDescription(eventDetails) {
 
   let interaction;
   try {
-    interaction = await ai.interactions.create({
+    interaction = await ai.models.generateContent({
       model: env.geminiModel,
-      input: prompt,
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
     });
   } catch (error) {
     throw classifyGeminiError(error);
   }
 
-  const description = (interaction.output_text ?? "").trim();
+  const description = (interaction.text ?? "").trim();
   if (!description) {
     const err = new Error("Gemini returned an empty event description");
     err.status = 400;
